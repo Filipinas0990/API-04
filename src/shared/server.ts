@@ -6,6 +6,8 @@ import { env } from '../config/env';
 import { errorHandler } from '../middlewares/error.middleware';
 import { authRoutes } from '../modules/auth/auth.routes';
 import { leadRoutes } from '../modules/leads/lead.routes';
+import { imovelRoutes } from '../modules/imoveis/imovel.routes';
+
 
 
 export function buildApp() {
@@ -24,6 +26,8 @@ export function buildApp() {
     app.register(cors, { origin: env.FRONTEND_URL, credentials: true });
     app.register(cookie, { secret: env.REFRESH_SECRET });
     app.register(leadRoutes, { prefix: '/api/v1/leads' });
+    app.register(imovelRoutes, { prefix: '/api/v1/imoveis' });
+
 
 
     app.get('/health', async () => ({
