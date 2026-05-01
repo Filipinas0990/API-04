@@ -1,5 +1,12 @@
+import { z } from 'zod';
 
-import { z } from 'zod'
+export const leadStatusEnum = [
+    'novo_cliente',
+    'em_contato',
+    'visita_marcada',
+    'proposta_enviada',
+    'cliente_desistiu',
+] as const;
 
 export const createLeadSchema = z.object({
     name: z
@@ -12,10 +19,9 @@ export const createLeadSchema = z.object({
         .min(10, 'Telefone inválido')
         .trim(),
 
-    gestor_responsavel: z
-        .string()
-        .optional(),
+    email: z.string().email('Email inválido').optional(),
 
+    gestor_responsavel: z.string().optional(),
 
     temperatura: z
         .number()
@@ -24,24 +30,19 @@ export const createLeadSchema = z.object({
         .max(3)
         .default(1),
 
-    interesse: z
-        .string()
-        .optional(),
+    interesse: z.string().optional(),
 
-    observacoes: z
-        .string()
-        .optional(),
-})
+    observacoes: z.string().optional(),
 
-export const updateLeadSchema = createLeadSchema.partial()
+    status: z.enum(leadStatusEnum).default('novo_cliente'),
+});
 
+export const updateLeadSchema = createLeadSchema.partial();
 
-export type CreateLeadDTO = z.infer<typeof createLeadSchema>
-export type UpdateLeadDTO = z.infer<typeof updateLeadSchema>
+export const updateStatusSchema = z.object({
+    status: z.enum(leadStatusEnum),
+});
 
-
-export type Lead = CreateLeadDTO & {
-    id: string
-    createdAt: Date
-    updatedAt: Date
-}
+export type CreateLeadDTO = z.infer<typeof createLeadSchema>;
+export type UpdateLeadDTO = z.infer<typeof updateLeadSchema>;
+export type LeadStatus = typeof leadStatusEnum[number];

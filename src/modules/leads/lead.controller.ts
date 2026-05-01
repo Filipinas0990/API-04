@@ -1,79 +1,84 @@
-
-
-import type { FastifyRequest, FastifyReply } from 'fastify'
-import { leadRepository } from './lead.repository.js'
-import { createLeadSchema, updateLeadSchema } from './lead.shema.js'
-import { AppError } from '../../shared/errors/AppError.js'
-
-type IdParams = { id: string }
+import { FastifyRequest, FastifyReply } from 'fastify';
+import { createLeadSchema, updateLeadSchema, updateStatusSchema } from './lead.shema';
+import { leadRepository } from './lead.repository';
 
 export const leadController = {
-
-
-    async list(_req: FastifyRequest, reply: FastifyReply) {
-        const leads = leadRepository.findAll()
-        return reply.send({ leads, total: leads.length })
+    async list(req: FastifyRequest, reply: FastifyReply) {
+        const { search, status } = req.query as { search?: string; status?: string };
+        const leads = await leadRepository.findAll(req.user.id, { search, status });
+        return reply.send(leads);
     },
-
-
-    async getById(req: FastifyRequest<{ Params: IdParams }>, reply: FastifyReply) {
-        const lead = leadRepository.findById(req.params.id)
-
-        if (!lead) {
-            throw new AppError('Lead não encontrado', 404)
-        }
-
-        return reply.send({ lead })
-    },
-
 
     async create(req: FastifyRequest, reply: FastifyReply) {
-
-        const result = createLeadSchema.safeParse(req.body)
-
-        if (!result.success) {
-
-            const errors = result.error.issues.map(issue => ({
-                field: issue.path.join('.'),
-                message: issue.message,
-            }))
-            throw new AppError(`Dados inválidos: ${errors[0].message}`, 422)
-        }
-
-        const lead = leadRepository.create(result.data)
-        return reply.status(201).send({ lead })
+        const data = createLeadSchema.parse(req.body);
+        const lead = await leadRepository.create(req.user.id, data);
+        return reply.status(201).send(lead);
     },
 
+    async getById(req: FastifyRequest, reply: FastifyReply) {
+        const { id } = req.params as { id: string };
+        const lead = await leadRepository.findById(id, req.user.id);
 
-    async update(req: FastifyRequest<{ Params: IdParams }>, reply: FastifyReply) {
-        const existing = leadRepository.findById(req.params.id)
-
-        if (!existing) {
-            throw new AppError('Lead não encontrado', 404)
+        if (!lead) {
+            return reply.status(404).send({
+                statusCode: 404,
+                error: 'Not Found',
+                message: 'Lead não encontrado',
+            });
         }
 
-        const result = updateLeadSchema.safeParse(req.body)
-
-        if (!result.success) {
-            const errors = result.error.issues.map(issue => ({
-                field: issue.path.join('.'),
-                message: issue.message,
-            }))
-            throw new AppError(`Dados inválidos: ${errors[0].message}`, 422)
-        }
-
-        const updated = leadRepository.update(req.params.id, result.data)
-        return reply.send({ lead: updated })
+        return reply.send(lead);
     },
 
+    async update(req: FastifyRequest, reply: FastifyReply) {
+        const { id } = req.params as { id: string };
+        const data = updateLeadSchema.parse(req.body);
+        const lead = await leadRepository.update(id, req.user.id, data);
 
-    async remove(req: FastifyRequest<{ Params: IdParams }>, reply: FastifyReply) {
-        const deleted = leadRepository.delete(req.params.id)
-
-        if (!deleted) {
-            throw new AppError('Lead não encontrado', 404)
+        if (!lead) {
+            return reply.status(404).send({
+                statusCode: 404,
+                error: 'Not Found',
+                message: 'Lead não encontrado',
+            });
         }
 
-        return reply.status(204).send()
+        return reply.send(lead);
     },
-}
+
+    async remove(req: FastifyRequest, reply: FastifyReply) {
+        const { id } = req.params as { id: string };
+        const lead = await leadRepository.delete(id, req.user.id);
+
+        if (!lead) {
+            return reply.status(404).send({
+                statusCode: 404,
+                error: 'Not Found',
+                message: 'Lead não encontrado',
+            });
+        }
+
+        return reply.status(204).send();
+    },
+
+    async updateStatus(req: FastifyRequest, reply: FastifyReply) {
+        const { id } = req.params as { id: string };
+        const { status } = updateStatusSchema.parse(req.body);
+        const lead = await leadRepository.update(id, req.user.id, { status });
+
+        if (!lead) {
+            return reply.status(404).send({
+                statusCode: 404,
+                error: 'Not Found',
+                message: 'Lead não encontrado',
+            });
+        }
+
+        return reply.send(lead);
+    },
+
+    async getPipeline(req: FastifyRequest, reply: FastifyReply) {
+        const pipeline = await leadRepository.getPipeline(req.user.id);
+        return reply.send(pipeline);
+    },
+};

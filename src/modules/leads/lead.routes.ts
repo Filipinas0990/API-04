@@ -1,16 +1,16 @@
-// src/modules/leads/lead.routes.ts
-// Aqui só declaramos as rotas e apontamos para o controller.
-// Quando você adicionar Auth, o middleware entra aqui.
+import { FastifyInstance } from 'fastify';
+import { leadController } from './lead.controller';
+import { authMiddleware } from '../../middlewares/auth.middleware';
 
-import type { FastifyInstance } from 'fastify'
-import { leadController } from './lead.controller.js'
+export async function leadRoutes(app: FastifyInstance) {
+    // Todas as rotas de leads são protegidas
+    app.addHook('preHandler', authMiddleware);
 
-export async function leadRoutes(fastify: FastifyInstance) {
-    // Prefixo /leads já vem configurado no server.ts
-
-    fastify.get('/', leadController.list)
-    fastify.get('/:id', leadController.getById)
-    fastify.post('/', leadController.create)
-    fastify.patch('/:id', leadController.update)
-    fastify.delete('/:id', leadController.remove)
+    app.get('/', leadController.list);
+    app.post('/', leadController.create);
+    app.get('/pipeline', leadController.getPipeline);
+    app.get('/:id', leadController.getById);
+    app.put('/:id', leadController.update);
+    app.delete('/:id', leadController.remove);
+    app.patch('/:id/status', leadController.updateStatus);
 }

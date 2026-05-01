@@ -1,74 +1,105 @@
-// src/modules/leads/lead.repository.ts
-// O Repository isola o acesso aos dados.
-// Hoje usa um array em memória — quando conectar o Prisma,
-// você só muda ESTE arquivo e o resto continua funcionando.
-
-import crypto from 'node:crypto'
-import type { Lead, CreateLeadDTO, UpdateLeadDTO } from './lead.shema.js'
-
-// Simula o banco de dados enquanto o Prisma não está conectado
-const leadsStore: Lead[] = [
-    {
-        id: '1',
-        name: 'Filipe',
-        telefone: '(62) 99999-0001',
-        gestor_responsavel: 'Admin',
-        temperatura: 3,
-        interesse: 'Apartamento 3 quartos',
-        observacoes: 'Lead quente, ligou 3x',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-    },
-    {
-        id: '2',
-        name: 'Gustavo',
-        telefone: '(62) 99999-0002',
-        gestor_responsavel: 'Admin',
-        temperatura: 2,
-        interesse: 'Casa em condomínio',
-        observacoes: 'Aguardando retorno',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-    },
-]
+import { eq, and, ilike, or } from 'drizzle-orm';
+import { db } from '../../database/client';
+import { leads } from './lead.db.schema';
 
 export const leadRepository = {
-    findAll(): Lead[] {
-        return leadsStore
-    },
+    // Listar todos os leads do usuário (com filtros opcionais)
+    async findAll(userId: string, filters?: { search?: string; status?: string }) {
+        const conditions = [eq(leads.user_id, userId)];
 
-    findById(id: string): Lead | undefined {
-        return leadsStore.find(lead => lead.id === id)
-    },
-
-    create(data: CreateLeadDTO): Lead {
-        const newLead: Lead = {
-            id: crypto.randomUUID(),
-            ...data,
-            createdAt: new Date(),
-            updatedAt: new Date(),
+        if (filters?.status) {
+            conditions.push(eq(leads.status, filters.status));
         }
-        leadsStore.push(newLead)
-        return newLead
-    },
 
-    update(id: string, data: UpdateLeadDTO): Lead | undefined {
-        const index = leadsStore.findIndex(lead => lead.id === id)
-        if (index === -1) return undefined
+        const allLeads = await db
+            .select()
+            .from(leads)
+            .where(and(...conditions))
+            .orderBy(leads.created_at);
 
-        leadsStore[index] = {
-            ...leadsStore[index],
-            ...data,
-            updatedAt: new Date(),
+        // Filtro de busca em memória (nome ou telefone)
+        if (filters?.search) {
+            const search = filters.search.toLowerCase();
+            return allLeads.filter(
+                l =>
+                    l.name.toLowerCase().includes(search) ||
+                    l.telefone.includes(search) ||
+                    (l.email?.toLowerCase().includes(search) ?? false)
+            );
         }
-        return leadsStore[index]
+
+        return allLeads;
     },
 
-    delete(id: string): boolean {
-        const index = leadsStore.findIndex(lead => lead.id === id)
-        if (index === -1) return false
-
-        leadsStore.splice(index, 1)
-        return true
+    // Buscar lead por ID (garante que pertence ao usuário)
+    async findById(id: string, userId: string) {
+        const result = await db
+            .select()
+            .from(leads)
+            .where(and(eq(leads.id, id), eq(leads.user_id, userId)));
+        return result[0] ?? null;
     },
-}
+
+    // Criar lead
+    async create(userId: string, data: {
+        name: string;
+        telefone: string;
+        email?: string;
+        gestor_responsavel?: string;
+        temperatura?: number;
+        interesse?: string;
+        observacoes?: string;
+        status?: string;
+    }) {
+        const [lead] = await db
+            .insert(leads)
+            .values({ ...data, user_id: userId })
+            .returning();
+        return lead;
+    },
+
+    // Atualizar lead
+    async update(id: string, userId: string, data: Partial<{
+        name: string;
+        telefone: string;
+        email: string;
+        gestor_responsavel: string;
+        temperatura: number;
+        interesse: string;
+        observacoes: string;
+        status: string;
+    }>) {
+        const [lead] = await db
+            .update(leads)
+            .set({ ...data, updated_at: new Date() })
+            .where(and(eq(leads.id, id), eq(leads.user_id, userId)))
+            .returning();
+        return lead ?? null;
+    },
+
+    // Deletar lead
+    async delete(id: string, userId: string) {
+        const [lead] = await db
+            .delete(leads)
+            .where(and(eq(leads.id, id), eq(leads.user_id, userId)))
+            .returning();
+        return lead ?? null;
+    },
+
+    // Pipeline: leads agrupados por status
+    async getPipeline(userId: string) {
+        const allLeads = await db
+            .select()
+            .from(leads)
+            .where(eq(leads.user_id, userId))
+            .orderBy(leads.created_at);
+
+        return {
+            novo_cliente: allLeads.filter(l => l.status === 'novo_cliente'),
+            em_contato: allLeads.filter(l => l.status === 'em_contato'),
+            visita_marcada: allLeads.filter(l => l.status === 'visita_marcada'),
+            proposta_enviada: allLeads.filter(l => l.status === 'proposta_enviada'),
+            cliente_desistiu: allLeads.filter(l => l.status === 'cliente_desistiu'),
+        };
+    },
+};
