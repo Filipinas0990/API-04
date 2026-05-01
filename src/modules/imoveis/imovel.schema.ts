@@ -9,7 +9,6 @@ export const createImovelSchema = z.object({
     classificacao: z.string().optional(),
     construtora: z.string().optional(),
 
-    // Preço
     preco: z.number().positive().optional(),
     preco_varia: z.boolean().default(false),
     sob_consulta: z.boolean().default(false),
@@ -17,17 +16,16 @@ export const createImovelSchema = z.object({
     condominio: z.number().optional(),
     renda_ideal: z.number().optional(),
 
-    // Financiamento
     entrada: z.number().optional(),
     parcelas: z.number().int().optional(),
     taxa_juros: z.number().optional(),
     fgts: z.boolean().default(false),
 
-    // Aluguel
+
     deposito: z.number().optional(),
     periodo_aluguel: z.enum(['Mensal', 'Anual', 'Temporada']).default('Mensal'),
 
-    // Características
+
     quartos: z.number().int().optional(),
     banheiros: z.number().int().optional(),
     vagas_garagem: z.number().int().default(0),
@@ -38,7 +36,6 @@ export const createImovelSchema = z.object({
     mobiliado: z.boolean().default(false),
     aceita_pets: z.boolean().default(false),
 
-    // Localização
     endereco: z.string().optional(),
     complemento: z.string().optional(),
     bairro: z.string().optional(),
@@ -46,7 +43,7 @@ export const createImovelSchema = z.object({
     estado: z.string().max(2).optional(),
     cep: z.string().optional(),
 
-    // Integração
+
     id_canal_pro: z.string().optional(),
 });
 

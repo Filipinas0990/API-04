@@ -7,6 +7,10 @@ import { errorHandler } from '../middlewares/error.middleware';
 import { authRoutes } from '../modules/auth/auth.routes';
 import { leadRoutes } from '../modules/leads/lead.routes';
 import { imovelRoutes } from '../modules/imoveis/imovel.routes';
+import { vendaRoutes } from '../modules/vendas/venda.routes';
+import { tarefaRoutes } from '../modules/tarefas/tarefa.routes';
+import { visitaRoutes } from '../modules/visitas/visita.routes';
+
 
 
 
@@ -27,6 +31,9 @@ export function buildApp() {
     app.register(cookie, { secret: env.REFRESH_SECRET });
     app.register(leadRoutes, { prefix: '/api/v1/leads' });
     app.register(imovelRoutes, { prefix: '/api/v1/imoveis' });
+    app.register(vendaRoutes, { prefix: '/api/v1/vendas' });
+    app.register(tarefaRoutes, { prefix: '/api/v1/tarefas' });
+    app.register(visitaRoutes, { prefix: '/api/v1/visitas' });
 
 
 
