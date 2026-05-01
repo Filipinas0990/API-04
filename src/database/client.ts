@@ -9,7 +9,7 @@ const connectionString =
         : env.DATABASE_URL;
 
 const client = postgres(connectionString, {
-    max: env.NODE_ENV === 'test' ? 1 : 10, // pool menor em testes
+    max: env.NODE_ENV === 'test' ? 1 : 10,
     idle_timeout: 20,
     connect_timeout: 10,
 });

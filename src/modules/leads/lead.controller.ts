@@ -1,6 +1,4 @@
-// src/modules/leads/lead.controller.ts
-// O Controller recebe a requisição, chama o Repository
-// e devolve a resposta. Nada de lógica de banco aqui.
+
 
 import type { FastifyRequest, FastifyReply } from 'fastify'
 import { leadRepository } from './lead.repository.js'
@@ -11,13 +9,13 @@ type IdParams = { id: string }
 
 export const leadController = {
 
-    // GET /leads
+
     async list(_req: FastifyRequest, reply: FastifyReply) {
         const leads = leadRepository.findAll()
         return reply.send({ leads, total: leads.length })
     },
 
-    // GET /leads/:id
+
     async getById(req: FastifyRequest<{ Params: IdParams }>, reply: FastifyReply) {
         const lead = leadRepository.findById(req.params.id)
 
@@ -28,13 +26,13 @@ export const leadController = {
         return reply.send({ lead })
     },
 
-    // POST /leads
+
     async create(req: FastifyRequest, reply: FastifyReply) {
-        // Zod valida e já retorna os dados no formato correto
+
         const result = createLeadSchema.safeParse(req.body)
 
         if (!result.success) {
-            // Formata os erros do Zod em algo legível
+
             const errors = result.error.issues.map(issue => ({
                 field: issue.path.join('.'),
                 message: issue.message,
@@ -46,7 +44,7 @@ export const leadController = {
         return reply.status(201).send({ lead })
     },
 
-    // PATCH /leads/:id
+
     async update(req: FastifyRequest<{ Params: IdParams }>, reply: FastifyReply) {
         const existing = leadRepository.findById(req.params.id)
 
@@ -68,7 +66,7 @@ export const leadController = {
         return reply.send({ lead: updated })
     },
 
-    // DELETE /leads/:id
+
     async remove(req: FastifyRequest<{ Params: IdParams }>, reply: FastifyReply) {
         const deleted = leadRepository.delete(req.params.id)
 

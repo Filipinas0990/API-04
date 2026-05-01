@@ -1,7 +1,3 @@
-// src/modules/leads/lead.schema.ts
-// Zod valida os dados que chegam na requisição.
-// Se faltar um campo obrigatório ou o tipo estiver errado,
-// ele rejeita ANTES de chegar no controller.
 
 import { z } from 'zod'
 
@@ -20,7 +16,7 @@ export const createLeadSchema = z.object({
         .string()
         .optional(),
 
-    // 1 = frio, 2 = morno, 3 = quente
+
     temperatura: z
         .number()
         .int()
@@ -39,11 +35,11 @@ export const createLeadSchema = z.object({
 
 export const updateLeadSchema = createLeadSchema.partial()
 
-// Tipos derivados do schema — não precisa declarar interface separada
+
 export type CreateLeadDTO = z.infer<typeof createLeadSchema>
 export type UpdateLeadDTO = z.infer<typeof updateLeadSchema>
 
-// Tipo do Lead completo (com id e timestamps)
+
 export type Lead = CreateLeadDTO & {
     id: string
     createdAt: Date
