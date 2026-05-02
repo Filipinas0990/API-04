@@ -140,6 +140,39 @@ npm run test:watch
 
 > Outras rotas estão disponíveis para `imoveis`, `vendas`, `tarefas`, `visitas` e `fluxo-caixa` dentro de `/api/v1`.
 
+## Fluxo da Aplicação
+
+O diagrama abaixo ilustra o fluxo principal de trabalho da aplicação:
+
+```mermaid
+graph TD
+    A[Usuário] --> B[Autenticação]
+    B --> C[Login/Register]
+    C --> D[Gerenciamento de Leads]
+    D --> E[Criar Lead]
+    D --> F[Atualizar Status no Pipeline]
+    F --> G[Converter para Venda]
+    G --> H[Registrar Venda]
+    H --> I[Agendar Visita]
+    I --> J[Criar Tarefa]
+    J --> K[Gerenciar Fluxo de Caixa]
+    K --> L[Registrar Receitas/Despesas]
+    
+    D --> M[Integração WhatsApp]
+    M --> N[Enviar Mensagens]
+    N --> O[Receber Respostas]
+    O --> P[Assistente IA]
+    
+    I --> Q[Visitas]
+    J --> R[Tarefas]
+    
+    style A fill:#e1f5fe
+    style B fill:#f3e5f5
+    style D fill:#fff3e0
+    style G fill:#e8f5e8
+    style K fill:#fce4ec
+```
+
 ## Observações
 
 - A aplicação usa autenticação para proteger a maioria dos endpoints de domínio.
