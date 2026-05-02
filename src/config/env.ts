@@ -21,6 +21,11 @@ const envSchema = z.object({
 
 
     FRONTEND_URL: z.string().url().default('http://localhost:5173'),
+
+    EVOLUTION_API_URL: z.string().url(),
+    EVOLUTION_API_KEY: z.string().min(1),
+    EVOLUTION_INSTANCE: z.string().min(1),
+    OPENAI_API_KEY: z.string().min(1),
 });
 
 const parsed = envSchema.safeParse(process.env);

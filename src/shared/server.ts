@@ -10,6 +10,7 @@ import { imovelRoutes } from '../modules/imoveis/imovel.routes';
 import { vendaRoutes } from '../modules/vendas/venda.routes';
 import { tarefaRoutes } from '../modules/tarefas/tarefa.routes';
 import { visitaRoutes } from '../modules/visitas/visita.routes';
+import { fluxoRoutes } from '../modules/fluxo-caixa/fluxo.routes';
 
 
 
@@ -34,6 +35,7 @@ export function buildApp() {
     app.register(vendaRoutes, { prefix: '/api/v1/vendas' });
     app.register(tarefaRoutes, { prefix: '/api/v1/tarefas' });
     app.register(visitaRoutes, { prefix: '/api/v1/visitas' });
+    app.register(fluxoRoutes, { prefix: '/api/v1/fluxo-caixa' });
 
 
 

@@ -1,4 +1,4 @@
-import { eq, and, gte, lte, desc } from 'drizzle-orm';
+import { eq, and, desc } from 'drizzle-orm';
 import { db } from '../../database/client';
 import { visitas } from './visita.db.schema';
 
@@ -31,17 +31,25 @@ export const visitaRepository = {
     },
 
     async create(userId: string, data: Record<string, unknown>) {
+        const payload = {
+            ...data,
+            user_id: userId,
+            data: data.data ? new Date(data.data as string) : new Date(),
+        };
         const [visita] = await db
             .insert(visitas)
-            .values({ ...data, user_id: userId } as typeof visitas.$inferInsert)
+            .values(payload as typeof visitas.$inferInsert)
             .returning();
         return visita;
     },
 
     async update(id: string, userId: string, data: Record<string, unknown>) {
+        const payload: Record<string, unknown> = { ...data, updated_at: new Date() };
+        if (data.data) payload.data = new Date(data.data as string);
+
         const [visita] = await db
             .update(visitas)
-            .set({ ...data, updated_at: new Date() } as typeof visitas.$inferInsert)
+            .set(payload as typeof visitas.$inferInsert)
             .where(and(eq(visitas.id, id), eq(visitas.user_id, userId)))
             .returning();
         return visita ?? null;
