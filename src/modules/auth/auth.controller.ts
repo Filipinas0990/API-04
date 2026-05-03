@@ -57,9 +57,15 @@ export const authController = {
     },
 
     async login(req: FastifyRequest, reply: FastifyReply) {
+        console.log('DATABASE_URL em uso:', process.env.DATABASE_URL);
+
         const { email, password } = loginSchema.parse(req.body);
+        console.log('Buscando usuário:', email);
+
 
         const user = await authRepository.findByEmail(email);
+        console.log('Usuário encontrado:', user);
+
         if (!user) {
             return reply.status(401).send({
                 statusCode: 401,
@@ -69,6 +75,8 @@ export const authController = {
         }
 
         const validPassword = await bcrypt.compare(password, user.password);
+        console.log('Senha válida:', validPassword);
+
         if (!validPassword) {
             return reply.status(401).send({
                 statusCode: 401,

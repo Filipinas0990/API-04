@@ -29,19 +29,30 @@ export const tarefaRepository = {
             .where(and(eq(tarefas.id, id), eq(tarefas.user_id, userId)));
         return result[0] ?? null;
     },
-
     async create(userId: string, data: Record<string, unknown>) {
+        const parsed = {
+            ...data,
+            user_id: userId,
+            data_inicio: data.data_inicio ? new Date(data.data_inicio as string) : null,
+            data_fim: data.data_fim ? new Date(data.data_fim as string) : null,
+        };
         const [tarefa] = await db
             .insert(tarefas)
-            .values({ ...data, user_id: userId } as typeof tarefas.$inferInsert)
+            .values(parsed as typeof tarefas.$inferInsert)
             .returning();
         return tarefa;
     },
 
     async update(id: string, userId: string, data: Record<string, unknown>) {
+        const parsed = {
+            ...data,
+            updated_at: new Date(),
+            data_inicio: data.data_inicio ? new Date(data.data_inicio as string) : undefined,
+            data_fim: data.data_fim ? new Date(data.data_fim as string) : undefined,
+        };
         const [tarefa] = await db
             .update(tarefas)
-            .set({ ...data, updated_at: new Date() } as typeof tarefas.$inferInsert)
+            .set(parsed as typeof tarefas.$inferInsert)
             .where(and(eq(tarefas.id, id), eq(tarefas.user_id, userId)))
             .returning();
         return tarefa ?? null;

@@ -29,7 +29,7 @@ export function buildApp() {
     });
 
     app.register(helmet);
-    app.register(cors, { origin: env.FRONTEND_URL, credentials: true });
+
     app.register(cookie, { secret: env.REFRESH_SECRET });
     app.register(leadRoutes, { prefix: '/api/v1/leads' });
     app.register(imovelRoutes, { prefix: '/api/v1/imoveis' });
@@ -39,8 +39,11 @@ export function buildApp() {
     app.register(fluxoRoutes, { prefix: '/api/v1/fluxo-caixa' });
     app.register(whatsappRoutes, { prefix: '/api/v1/whatsapp' });
 
-
-
+    app.register(cors, {
+        origin: env.FRONTEND_URL,
+        credentials: true,
+        methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    });
 
     app.get('/health', async () => ({
         status: 'ok',
