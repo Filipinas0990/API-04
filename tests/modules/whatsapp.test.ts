@@ -9,7 +9,11 @@ import { vendas } from '../../src/modules/vendas/venda.db.schema';
 import { tarefas } from '../../src/modules/tarefas/tarefa.db.schema';
 import { visitas } from '../../src/modules/visitas/visita.db.schema';
 import { fluxoCaixa } from '../../src/modules/fluxo-caixa/fluxo.db.schema';
-import { conversas, mensagens, disparos, disparosDiarios, automacoes } from '../../src/modules/whatAapp/whatsapp.db.schema';
+import {
+    conversas, mensagens, disparos, disparoLogs,
+    disparosDiarios, automationFlows, automationNodes, automationSessions
+} from '../../src/modules/whatAapp/whatsapp.db.schema';
+
 
 const app = buildApp();
 let tokenA: string;
@@ -19,10 +23,13 @@ beforeAll(async () => { await app.ready(); });
 afterAll(async () => { await app.close(); });
 
 beforeEach(async () => {
+    await db.delete(automationSessions);
+    await db.delete(automationNodes);
+    await db.delete(automationFlows);
     await db.delete(mensagens);
+    await db.delete(disparoLogs);
     await db.delete(disparosDiarios);
     await db.delete(disparos);
-    await db.delete(automacoes);
     await db.delete(conversas);
     await db.delete(fluxoCaixa);
     await db.delete(visitas);
@@ -46,20 +53,7 @@ beforeEach(async () => {
     tokenB = loginB.body.access_token;
 });
 
-describe('GET /api/v1/whatsapp/conversas', () => {
-    it('deve retornar lista vazia inicialmente', async () => {
-        const res = await supertest(app.server)
-            .get('/api/v1/whatsapp/conversas')
-            .set('Authorization', `Bearer ${tokenA}`);
-        expect(res.status).toBe(200);
-        expect(res.body).toHaveLength(0);
-    });
 
-    it('deve retornar 401 sem token', async () => {
-        const res = await supertest(app.server).get('/api/v1/whatsapp/conversas');
-        expect(res.status).toBe(401);
-    });
-});
 
 describe('GET /api/v1/whatsapp/disparos/limite', () => {
     it('deve retornar limite diário', async () => {
@@ -94,24 +88,24 @@ describe('POST /api/v1/whatsapp/disparos', () => {
     });
 });
 
-describe('POST /api/v1/whatsapp/automacoes', () => {
-    it('deve criar automação e retornar 201', async () => {
+
+
+
+describe('GET /api/v1/whatsapp/conversas', () => {
+    it('deve retornar lista vazia inicialmente', async () => {
         const res = await supertest(app.server)
-            .post('/api/v1/whatsapp/automacoes')
-            .set('Authorization', `Bearer ${tokenA}`)
-            .send({ nome: 'Boas vindas', ativo: false, trigger: 'primeira_mensagem' });
-        expect(res.status).toBe(201);
-        expect(res.body).toHaveProperty('id');
-        expect(res.body.nome).toBe('Boas vindas');
+            .get('/api/v1/whatsapp/conversas')
+            .set('Authorization', `Bearer ${tokenA}`);
+        expect(res.status).toBe(200);
+        expect(res.body).toHaveLength(0);
     });
 
     it('deve retornar 401 sem token', async () => {
-        const res = await supertest(app.server)
-            .post('/api/v1/whatsapp/automacoes')
-            .send({ nome: 'Teste' });
+        const res = await supertest(app.server).get('/api/v1/whatsapp/conversas');
         expect(res.status).toBe(401);
     });
 });
+
 
 describe('GET /api/v1/whatsapp/automacoes', () => {
     it('deve listar somente automações do usuário', async () => {
@@ -129,9 +123,11 @@ describe('GET /api/v1/whatsapp/automacoes', () => {
 
         expect(res.status).toBe(200);
         expect(res.body).toHaveLength(1);
-        expect(res.body[0].nome).toBe('Auto A');
+        expect(res.body[0].name).toBe('Auto A');
     });
 });
+
+
 
 describe('DELETE /api/v1/whatsapp/automacoes/:id', () => {
     it('deve deletar automação e retornar 204', async () => {

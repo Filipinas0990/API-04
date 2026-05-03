@@ -11,7 +11,7 @@ export const leadStatusEnum = [
 export const createLeadSchema = z.object({
     name: z
         .string({ error: 'Nome é obrigatório' })
-        .min(2, 'Nome deve ter ao menos 2 caracteres')
+        .min(3, 'Nome deve ter ao menos 3 caracteres')
         .trim(),
 
     telefone: z
