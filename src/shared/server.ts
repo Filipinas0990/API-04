@@ -39,6 +39,8 @@ export function buildApp() {
     app.register(fluxoRoutes, { prefix: '/api/v1/fluxo-caixa' });
     app.register(whatsappRoutes, { prefix: '/api/v1/whatsapp' });
 
+
+
     app.register(cors, {
         origin: env.FRONTEND_URL,
         credentials: true,
