@@ -47,6 +47,9 @@ export async function whatsappRoutes(app: FastifyInstance) {
         protectedApp.post('/flows/:flowId/nodes', whatsappController.createNode);
         protectedApp.put('/nodes/:id', whatsappController.updateNode);
         protectedApp.delete('/nodes/:id', whatsappController.deleteNode);
+
+        // Evolution API proxy — repassa qualquer método/path para a Evolution
+        protectedApp.all('/evolution/*', whatsappController.evolutionProxy);
     });
 
 
