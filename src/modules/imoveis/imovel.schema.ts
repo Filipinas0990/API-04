@@ -4,7 +4,15 @@ export const createImovelSchema = z.object({
     titulo: z.string().min(1, 'Título é obrigatório'),
     descricao: z.string().optional(),
     tipo: z.string().optional(),
-    status: z.enum(['Ativo', 'Em Análise', 'Inativo']).default('Ativo'),
+    status: z.enum([
+        // Genérico
+        'Ativo', 'Em Análise', 'Inativo',
+        // Aluguéis
+        'Disponível', 'Alugado', 'Reservado', 'Indisponível',
+        // Financiamentos
+        'Aprovado', 'Vendido', 'Cancelado',
+        // Loteamentos
+    ]).default('Ativo'),
     fase_obra: z.string().optional(),
     classificacao: z.string().optional(),
     construtora: z.string().optional(),
@@ -21,10 +29,8 @@ export const createImovelSchema = z.object({
     taxa_juros: z.number().optional(),
     fgts: z.boolean().default(false),
 
-
     deposito: z.number().optional(),
-    periodo_aluguel: z.enum(['Mensal', 'Anual', 'Temporada']).default('Mensal'),
-
+    periodo_aluguel: z.enum(['Mensal', 'Anual', 'Temporada', 'Diária']).default('Mensal'),
 
     quartos: z.number().int().optional(),
     banheiros: z.number().int().optional(),
@@ -42,7 +48,6 @@ export const createImovelSchema = z.object({
     cidade: z.string().optional(),
     estado: z.string().max(2).optional(),
     cep: z.string().optional(),
-
 
     id_canal_pro: z.string().optional(),
 });
