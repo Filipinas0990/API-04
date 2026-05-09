@@ -15,6 +15,13 @@
       "when": 1777833374616,
       "tag": "0001_certain_ozymandias",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1778203655898,
+      "tag": "0002_fuzzy_randall_flagg",
+      "breakpoints": true
     }
   ]
 }

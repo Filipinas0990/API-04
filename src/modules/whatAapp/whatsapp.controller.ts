@@ -3,6 +3,10 @@ import { z } from 'zod';
 import { whatsappRepository } from './whatsapp.repository';
 import { evolutionService } from './evolution.service';
 import { assistenteService } from './assistente.service';
+import { flowEngine } from './flow.engine';
+import { env } from '../../config/env';
+import { visitaRepository } from '../visitas/visita.repository';
+import { tarefaRepository } from '../tarefas/tarefa.repository';
 import { leadRepository } from '../leads/lead.repository';
 import { vendaRepository } from '../vendas/venda.repository';
 import { imovelRepository } from '../imoveis/imovel.repository';
@@ -78,14 +82,60 @@ export const whatsappController = {
         const body = req.body as Record<string, unknown>;
         const event = body?.event as string;
         if (event !== 'messages.upsert') return reply.send({ ok: true });
+
         const data = body?.data as Record<string, unknown>;
         const key = data?.key as Record<string, unknown>;
-        const fromMe = key?.fromMe as boolean;
-        if (fromMe) return reply.send({ ok: true });
+        if (key?.fromMe) return reply.send({ ok: true });
+
         const telefone = (key?.remoteJid as string)?.replace('@s.whatsapp.net', '');
-        const conteudo = (data?.message as Record<string, unknown>)?.conversation as string ?? '[mídia]';
+        const msgContent = data?.message as Record<string, unknown> | undefined;
+        const conteudo = (msgContent?.conversation ?? msgContent?.extendedTextMessage
+            ? ((msgContent?.extendedTextMessage as Record<string, unknown>)?.text ?? msgContent?.conversation)
+            : '[mídia]') as string;
         const instanceName = body?.instance as string;
-        return reply.send({ ok: true, telefone, conteudo, instanceName });
+
+        if (!telefone || !instanceName) return reply.send({ ok: true });
+
+        // Responde imediatamente à Evolution API e processa em background
+        reply.send({ ok: true });
+
+        // ── Verifica se é resposta a lembrete de visita ──────────────────────
+        (async () => {
+            try {
+                const visita = await visitaRepository.findPendingLembreteByPhone(telefone);
+                if (visita) {
+                    const resp = conteudo.trim().toLowerCase();
+                    const confirmou = ['1', 'sim', 's', 'confirmo', 'yes'].includes(resp);
+                    const recusou = ['2', 'não', 'nao', 'n', 'não posso', 'nao posso'].includes(resp);
+
+                    if (confirmou) {
+                        await visitaRepository.marcarConfirmada(visita.id, true);
+                        await evolutionService.sendText(telefone, '✅ Perfeito! Visita confirmada. Te esperamos lá! 🏡');
+                    } else if (recusou) {
+                        await visitaRepository.marcarConfirmada(visita.id, false);
+                        await evolutionService.sendText(telefone, 'Tudo bem! Um de nossos corretores vai entrar em contato. 😊');
+                        const nome = visita.nome_cliente ?? telefone;
+                        const dataFormatada = new Date(visita.data).toLocaleString('pt-BR', {
+                            timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short',
+                        });
+                        await tarefaRepository.create(visita.user_id, {
+                            titulo: `${nome} cancelou a visita`,
+                            descricao: `Cliente informou que não poderá comparecer à visita de ${dataFormatada}.`,
+                            data_fim: new Date(),
+                            prioridade: 'alta',
+                            lead_id: visita.lead_id ?? null,
+                        });
+                        await visitaRepository.marcarTarefaLembreteCriada(visita.id);
+                    }
+                    return; // não processa como flow normal
+                }
+            } catch (err) {
+                console.error('[webhook] Erro ao processar lembrete de visita:', err);
+            }
+
+            // ── Processa flow de automação normalmente ───────────────────────
+            flowEngine.processIncomingMessage(instanceName, telefone, conteudo).catch(console.error);
+        })();
     },
 
     // ── ASSISTENTE IA ──────────────────────────────────
@@ -280,5 +330,32 @@ export const whatsappController = {
         const node = await whatsappRepository.deleteNode(id);
         if (!node) return reply.status(404).send({ message: 'Node não encontrado' });
         return reply.status(204).send();
+    },
+
+    // ── EVOLUTION PROXY ───────────────────────────────────────────────────────
+    // Repassa qualquer chamada para a Evolution API injetando o apikey
+    async evolutionProxy(req: FastifyRequest, reply: FastifyReply) {
+        const wildcard = (req.params as Record<string, string>)['*'] ?? '';
+        const qs = new URLSearchParams(req.query as Record<string, string>).toString();
+        const targetUrl = `${env.EVOLUTION_API_URL}/${wildcard}${qs ? `?${qs}` : ''}`;
+
+        const hasBody = req.method !== 'GET' && req.method !== 'HEAD' && req.body != null;
+
+        const response = await fetch(targetUrl, {
+            method: req.method,
+            headers: {
+                'Content-Type': 'application/json',
+                'apikey': env.EVOLUTION_API_KEY,
+            },
+            body: hasBody ? JSON.stringify(req.body) : undefined,
+        });
+
+        const contentType = response.headers.get('content-type') ?? '';
+        if (contentType.includes('application/json')) {
+            const data = await response.json();
+            return reply.status(response.status).send(data);
+        }
+        const text = await response.text();
+        return reply.status(response.status).send(text);
     },
 };

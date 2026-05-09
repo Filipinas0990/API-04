@@ -47,7 +47,7 @@ async function shouldTriggerFlow(flow: Flow, telefone: string, conteudo: string)
 
     if (trigger === 'always') return true;
 
-    if (trigger === 'primeira_mensagem') {
+    if (trigger === 'primeira_mensagem' || trigger === 'first_contact') {
         // Dispara apenas se nunca houve sessão concluída com este telefone nesta instância
         const count = await whatsappRepository.countFinishedSessions(flow.instance_name, telefone);
         return count === 0;
@@ -144,7 +144,7 @@ async function executeNode(
     }
 
     // ── TRANSFERIR ───────────────────────────────────────────────────────────
-    if (type === 'transferir') {
+    if (type === 'transfer' || type === 'transferir') {
         if (delayMs > 0) await sleep(delayMs);
         if (node.message) {
             await evolutionService.sendText(telefone, node.message);
@@ -252,9 +252,12 @@ export const flowEngine = {
         if (!flows.length) return;
 
         for (const flow of flows) {
-            const offStart = flow.off_hours_start ?? '18:00:00';
-            const offEnd = flow.off_hours_end ?? '08:00:00';
-            if (isOffHours(offStart, offEnd)) continue;
+            // off_hours: só bloqueia fluxos configurados especificamente para esse trigger
+            if (flow.trigger_type === 'off_hours') {
+                const offStart = flow.off_hours_start ?? '18:00:00';
+                const offEnd = flow.off_hours_end ?? '08:00:00';
+                if (!isOffHours(offStart, offEnd)) continue;
+            }
 
             const shouldTrigger = await shouldTriggerFlow(flow, telefone, conteudo);
             if (!shouldTrigger) continue;

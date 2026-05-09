@@ -239,6 +239,74 @@ export const whatsappRepository = {
         return this.deleteFlow(id, userId);
     },
 
+    // ── FLOW ENGINE — métodos de suporte ──────────────────────────────────────
+
+    // Descobre o user_id pelo instance_name registrado em qualquer flow
+    async findUserByInstanceName(instanceName: string) {
+        const result = await db
+            .select({ user_id: automationFlows.user_id })
+            .from(automationFlows)
+            .where(eq(automationFlows.instance_name, instanceName))
+            .limit(1);
+        return result[0] ?? null;
+    },
+
+    // Retorna todos os flows ativos de uma instância
+    async findActiveFlowsByInstance(instanceName: string) {
+        return db.select().from(automationFlows)
+            .where(and(
+                eq(automationFlows.instance_name, instanceName),
+                eq(automationFlows.status, 'ativo'),
+            ));
+    },
+
+    // Busca um nó pelo ID
+    async findNodeById(nodeId: string) {
+        const result = await db.select().from(automationNodes)
+            .where(eq(automationNodes.id, nodeId));
+        return result[0] ?? null;
+    },
+
+    // Retorna o nó de início (type = 'start') de um flow
+    async findStartNode(flowId: string) {
+        const result = await db.select().from(automationNodes)
+            .where(and(
+                eq(automationNodes.flow_id, flowId),
+                eq(automationNodes.type, 'start'),
+            ))
+            .orderBy(automationNodes.order_index)
+            .limit(1);
+        return result[0] ?? null;
+    },
+
+    // Conta sessões finalizadas para checar trigger 'primeira_mensagem'
+    async countFinishedSessions(instanceName: string, phone: string): Promise<number> {
+        const result = await db.select().from(automationSessions)
+            .where(and(
+                eq(automationSessions.instance_name, instanceName),
+                eq(automationSessions.phone, phone),
+                eq(automationSessions.status, 'finished'),
+            ));
+        return result.length;
+    },
+
+    // Retorna as variáveis de uma sessão (respostas coletadas)
+    async getSessionVariables(sessionId: string): Promise<Record<string, string>> {
+        const result = await db.select({ variables: automationSessions.variables })
+            .from(automationSessions)
+            .where(eq(automationSessions.id, sessionId));
+        return (result[0]?.variables as Record<string, string>) ?? {};
+    },
+
+    // Atualiza conversa diretamente pelo ID (sem exigir user_id no where)
+    async updateConversaById(id: string, userId: string, data: Record<string, unknown>) {
+        const [c] = await db.update(conversas)
+            .set({ ...data, updated_at: new Date() } as typeof conversas.$inferInsert)
+            .where(and(eq(conversas.id, id), eq(conversas.user_id, userId)))
+            .returning();
+        return c ?? null;
+    },
+
 
 
 
