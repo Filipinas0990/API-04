@@ -78,6 +78,15 @@ async function executeNode(
 
     // ── START ────────────────────────────────────────────────────────────────
     if (type === 'start') {
+        if (node.message) {
+            const delayMs = (node.delay_seconds ?? 0) * 1000;
+            if (delayMs > 0) await sleep(delayMs);
+            await evolutionService.sendText(telefone, node.message);
+            await whatsappRepository.saveMensagem({
+                user_id: userId, conversa_id: conversaId,
+                telefone, direcao: 'enviada', conteudo: node.message,
+            });
+        }
         if (!node.next_node_id) return;
         const next = await whatsappRepository.findNodeById(node.next_node_id);
         if (!next) return;

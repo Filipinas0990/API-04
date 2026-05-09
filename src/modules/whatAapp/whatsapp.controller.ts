@@ -39,8 +39,12 @@ export const whatsappController = {
 
     // ── CONVERSAS ──────────────────────────────────
     async listConversas(req: FastifyRequest, reply: FastifyReply) {
-        const { status } = req.query as { status?: string };
-        const lista = await whatsappRepository.listConversas(req.user.id, status);
+        const { status, limit, offset } = req.query as { status?: string; limit?: string; offset?: string };
+        const lista = await whatsappRepository.listConversas(
+            req.user.id, status,
+            limit ? parseInt(limit, 10) : undefined,
+            offset ? parseInt(offset, 10) : undefined,
+        );
         return reply.send(lista);
     },
 
@@ -55,7 +59,12 @@ export const whatsappController = {
     // ── MENSAGENS ──────────────────────────────────
     async listMensagens(req: FastifyRequest, reply: FastifyReply) {
         const { conversaId } = req.params as { conversaId: string };
-        const msgs = await whatsappRepository.listMensagens(conversaId, req.user.id);
+        const { limit, offset } = req.query as { limit?: string; offset?: string };
+        const msgs = await whatsappRepository.listMensagens(
+            conversaId, req.user.id,
+            limit ? parseInt(limit, 10) : undefined,
+            offset ? parseInt(offset, 10) : undefined,
+        );
         return reply.send(msgs);
     },
 
@@ -126,6 +135,10 @@ export const whatsappController = {
                             lead_id: visita.lead_id ?? null,
                         });
                         await visitaRepository.marcarTarefaLembreteCriada(visita.id);
+                    } else {
+                        // Resposta não reconhecida — re-prompt sem cair no fluxo de automação
+                        await evolutionService.sendText(telefone,
+                            'Não entendi sua resposta. 😊\nPor favor, responda:\n*1 - Sim, confirmo ✅*\n*2 - Não poderei ir ❌*');
                     }
                     return; // não processa como flow normal
                 }
@@ -181,12 +194,22 @@ export const whatsappController = {
     },
 
     async listDisparos(req: FastifyRequest, reply: FastifyReply) {
-        const lista = await whatsappRepository.listDisparos(req.user.id);
+        const { limit, offset } = req.query as { limit?: string; offset?: string };
+        const lista = await whatsappRepository.listDisparos(
+            req.user.id,
+            limit ? parseInt(limit, 10) : undefined,
+            offset ? parseInt(offset, 10) : undefined,
+        );
         return reply.send(lista);
     },
 
     async listDisparoLogs(req: FastifyRequest, reply: FastifyReply) {
-        const logs = await whatsappRepository.listDisparoLogs(req.user.id);
+        const { limit, offset } = req.query as { limit?: string; offset?: string };
+        const logs = await whatsappRepository.listDisparoLogs(
+            req.user.id,
+            limit ? parseInt(limit, 10) : undefined,
+            offset ? parseInt(offset, 10) : undefined,
+        );
         return reply.send(logs);
     },
 

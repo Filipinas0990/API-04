@@ -12,6 +12,7 @@ import { tarefaRoutes } from '../modules/tarefas/tarefa.routes';
 import { visitaRoutes } from '../modules/visitas/visita.routes';
 import { fluxoRoutes } from '../modules/fluxo-caixa/fluxo.routes';
 import { whatsappRoutes } from '../modules/whatAapp/whatsapp.routes';
+import { orgRoutes } from '../modules/org/org.routes';
 
 
 
@@ -38,6 +39,7 @@ export function buildApp() {
     app.register(visitaRoutes, { prefix: '/api/v1/visitas' });
     app.register(fluxoRoutes, { prefix: '/api/v1/fluxo-caixa' });
     app.register(whatsappRoutes, { prefix: '/api/v1/whatsapp' });
+    app.register(orgRoutes, { prefix: '/api/v1/org' });
 
 
 

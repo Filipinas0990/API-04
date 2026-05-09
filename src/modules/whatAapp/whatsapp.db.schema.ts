@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, boolean, integer, timestamp, jsonb, time } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, boolean, integer, timestamp, jsonb, time, index } from 'drizzle-orm/pg-core';
 import { users } from '../auth/auth.schema';
 import { leads } from '../leads/lead.db.schema';
 
@@ -14,7 +14,10 @@ export const conversas = pgTable('conversas', {
     ultima_msg_em: timestamp('ultima_msg_em'),
     created_at: timestamp('created_at').defaultNow(),
     updated_at: timestamp('updated_at').defaultNow(),
-});
+}, (table) => [
+    index('conversas_user_id_idx').on(table.user_id),
+    index('conversas_user_telefone_idx').on(table.user_id, table.telefone),
+]);
 
 // ── MENSAGENS ──────────────────────────────────────────
 export const mensagens = pgTable('mensagens', {
@@ -27,7 +30,9 @@ export const mensagens = pgTable('mensagens', {
     tipo: text('tipo').default('texto'), // texto | imagem | audio | documento
     wam_id: text('wam_id'),
     created_at: timestamp('created_at').defaultNow(),
-});
+}, (table) => [
+    index('mensagens_conversa_id_idx').on(table.conversa_id),
+]);
 
 // ── DISPAROS ──────────────────────────────────────────
 export const disparos = pgTable('disparos', {
@@ -62,7 +67,9 @@ export const disparosDiarios = pgTable('disparos_diarios', {
     user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
     data: text('data').notNull(), // YYYY-MM-DD
     quantidade: integer('quantidade').default(0),
-});
+}, (table) => [
+    index('disparos_diarios_user_data_idx').on(table.user_id, table.data),
+]);
 
 // ── AUTOMATION FLOWS ──────────────────────────────────
 export const automationFlows = pgTable('automation_flows', {
@@ -77,7 +84,10 @@ export const automationFlows = pgTable('automation_flows', {
     restart_after_hours: integer('restart_after_hours').default(24),
     created_at: timestamp('created_at').defaultNow(),
     updated_at: timestamp('updated_at').defaultNow(),
-});
+}, (table) => [
+    index('flows_user_id_idx').on(table.user_id),
+    index('flows_instance_status_idx').on(table.instance_name, table.status),
+]);
 
 // ── AUTOMATION NODES ──────────────────────────────────
 export const automationNodes = pgTable('automation_nodes', {
@@ -93,7 +103,9 @@ export const automationNodes = pgTable('automation_nodes', {
     delay_seconds: integer('delay_seconds').default(0),
     node_data: jsonb('node_data').default({}),
     created_at: timestamp('created_at').defaultNow(),
-});
+}, (table) => [
+    index('nodes_flow_id_idx').on(table.flow_id),
+]);
 
 // ── AUTOMATION SESSIONS ───────────────────────────────
 export const automationSessions = pgTable('automation_sessions', {
@@ -107,4 +119,6 @@ export const automationSessions = pgTable('automation_sessions', {
     waiting_for_input: boolean('waiting_for_input').default(false),
     created_at: timestamp('created_at').defaultNow(),
     updated_at: timestamp('updated_at').defaultNow(),
-});
+}, (table) => [
+    index('sessions_lookup_idx').on(table.instance_name, table.phone, table.status),
+]);

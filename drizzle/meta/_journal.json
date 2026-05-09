@@ -22,6 +22,27 @@
       "when": 1778203655898,
       "tag": "0002_fuzzy_randall_flagg",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1778349692936,
+      "tag": "0003_amazing_slyde",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1778350601707,
+      "tag": "0004_curly_dreaming_celestial",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1778351329095,
+      "tag": "0005_amazing_selene",
+      "breakpoints": true
     }
   ]
 }

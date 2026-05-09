@@ -9,7 +9,7 @@ export const visitas = pgTable('visitas', {
     lead_id: uuid('lead_id').references(() => leads.id, { onDelete: 'set null' }),
     imovel_id: uuid('imovel_id').references(() => imoveis.id, { onDelete: 'set null' }),
 
-    data: timestamp('data').notNull(),
+    data: timestamp('data', { withTimezone: true }).notNull(),
     anotacoes: text('anotacoes'),
     status: text('status').default('agendada'),
 

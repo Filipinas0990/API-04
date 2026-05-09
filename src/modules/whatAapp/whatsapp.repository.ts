@@ -1,4 +1,4 @@
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, count } from 'drizzle-orm';
 import { db } from '../../database/client';
 import {
     conversas, mensagens, disparos, disparoLogs,
@@ -18,11 +18,15 @@ export const whatsappRepository = {
         return nova;
     },
 
-    async listConversas(userId: string, status?: string) {
-        const all = await db.select().from(conversas)
-            .where(eq(conversas.user_id, userId))
-            .orderBy(desc(conversas.ultima_msg_em));
-        return status ? all.filter(c => c.status === status) : all;
+    async listConversas(userId: string, status?: string, limit = 100, offset = 0) {
+        return db.select().from(conversas)
+            .where(status
+                ? and(eq(conversas.user_id, userId), eq(conversas.status, status))
+                : eq(conversas.user_id, userId)
+            )
+            .orderBy(desc(conversas.ultima_msg_em))
+            .limit(limit)
+            .offset(offset);
     },
 
     async updateConversa(id: string, userId: string, data: Record<string, unknown>) {
@@ -55,10 +59,12 @@ export const whatsappRepository = {
         return msg;
     },
 
-    async listMensagens(conversaId: string, userId: string) {
+    async listMensagens(conversaId: string, userId: string, limit = 100, offset = 0) {
         return db.select().from(mensagens)
             .where(and(eq(mensagens.conversa_id, conversaId), eq(mensagens.user_id, userId)))
-            .orderBy(mensagens.created_at);
+            .orderBy(mensagens.created_at)
+            .limit(limit)
+            .offset(offset);
     },
 
     // ── DISPAROS ──────────────────────────────────
@@ -77,10 +83,12 @@ export const whatsappRepository = {
         return d ?? null;
     },
 
-    async listDisparos(userId: string) {
+    async listDisparos(userId: string, limit = 50, offset = 0) {
         return db.select().from(disparos)
             .where(eq(disparos.user_id, userId))
-            .orderBy(desc(disparos.created_at));
+            .orderBy(desc(disparos.created_at))
+            .limit(limit)
+            .offset(offset);
     },
 
     // ── DISPARO LOGS ──────────────────────────────
@@ -96,10 +104,12 @@ export const whatsappRepository = {
         return log;
     },
 
-    async listDisparoLogs(userId: string) {
+    async listDisparoLogs(userId: string, limit = 100, offset = 0) {
         return db.select().from(disparoLogs)
             .where(eq(disparoLogs.user_id, userId))
-            .orderBy(desc(disparoLogs.sent_at));
+            .orderBy(desc(disparoLogs.sent_at))
+            .limit(limit)
+            .offset(offset);
     },
 
     // ── LIMITE DIÁRIO ──────────────────────────────
@@ -281,13 +291,13 @@ export const whatsappRepository = {
 
     // Conta sessões finalizadas para checar trigger 'primeira_mensagem'
     async countFinishedSessions(instanceName: string, phone: string): Promise<number> {
-        const result = await db.select().from(automationSessions)
+        const result = await db.select({ total: count() }).from(automationSessions)
             .where(and(
                 eq(automationSessions.instance_name, instanceName),
                 eq(automationSessions.phone, phone),
                 eq(automationSessions.status, 'finished'),
             ));
-        return result.length;
+        return result[0]?.total ?? 0;
     },
 
     // Retorna as variáveis de uma sessão (respostas coletadas)

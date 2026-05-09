@@ -2,6 +2,7 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { authRepository } from './auth.repository';
+import { orgRepository } from '../org/org.repository';
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../../config/jwt';
 
 
@@ -11,6 +12,16 @@ const registerSchema = z.object({
     password: z.string().min(8, 'Senha deve ter ao menos 8 caracteres'),
     phone: z.string().optional(),
     creci: z.string().optional(),
+});
+
+const registerImobiliariaSchema = z.object({
+    name: z.string().min(2, 'Nome muito curto'),
+    email: z.string().email('Email inválido'),
+    password: z.string().min(8, 'Senha deve ter ao menos 8 caracteres'),
+    phone: z.string().optional(),
+    org_name: z.string().min(2, 'Nome da imobiliária muito curto'),
+    org_phone: z.string().optional(),
+    org_email: z.string().email().optional(),
 });
 
 const loginSchema = z.object({
@@ -35,57 +46,90 @@ export const authController = {
     async register(req: FastifyRequest, reply: FastifyReply) {
         const data = registerSchema.parse(req.body);
 
-
         const existing = await authRepository.findByEmail(data.email);
         if (existing) {
-            return reply.status(409).send({
-                statusCode: 409,
-                error: 'Conflict',
-                message: 'Email já cadastrado',
-            });
+            return reply.status(409).send({ statusCode: 409, error: 'Conflict', message: 'Email já cadastrado' });
         }
-
-
-        const hashedPassword = await bcrypt.hash(data.password, 12);
 
         const user = await authRepository.create({
             ...data,
-            password: hashedPassword,
+            password: await bcrypt.hash(data.password, 12),
+            tipo_conta: 'corretor',
+            role: 'owner',
         });
 
         return reply.status(201).send(user);
     },
 
+    async registerImobiliaria(req: FastifyRequest, reply: FastifyReply) {
+        const data = registerImobiliariaSchema.parse(req.body);
+
+        const existing = await authRepository.findByEmail(data.email);
+        if (existing) {
+            return reply.status(409).send({ statusCode: 409, error: 'Conflict', message: 'Email já cadastrado' });
+        }
+
+        // 1. Cria a organização
+        const org = await orgRepository.createOrg({
+            name: data.org_name,
+            email: data.org_email,
+            phone: data.org_phone,
+        });
+
+        // 2. Cria o usuário vinculado à org como owner
+        const user = await authRepository.create({
+            name: data.name,
+            email: data.email,
+            password: await bcrypt.hash(data.password, 12),
+            phone: data.phone,
+            tipo_conta: 'imobiliaria',
+            role: 'owner',
+            organization_id: org.id,
+        });
+
+        const accessToken = signAccessToken(user.id, {
+            role: user.role ?? 'owner',
+            tipo_conta: user.tipo_conta ?? 'imobiliaria',
+            organization_id: user.organization_id ?? null,
+        });
+        const refreshToken = signRefreshToken(user.id);
+        await authRepository.saveRefreshToken(user.id, refreshToken, refreshExpiresAt());
+
+        reply.setCookie('refresh_token', refreshToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+            path: '/api/v1/auth/refresh',
+            maxAge: 60 * 60 * 24 * 7,
+        });
+
+        return reply.status(201).send({
+            access_token: accessToken,
+            user: { id: user.id, name: user.name, email: user.email, tipo_conta: user.tipo_conta, role: user.role, organization_id: user.organization_id },
+            organization: org,
+        });
+    },
+
     async login(req: FastifyRequest, reply: FastifyReply) {
-        console.log('DATABASE_URL em uso:', process.env.DATABASE_URL);
-
         const { email, password } = loginSchema.parse(req.body);
-        console.log('Buscando usuário:', email);
-
 
         const user = await authRepository.findByEmail(email);
-        console.log('Usuário encontrado:', user);
 
         if (!user) {
-            return reply.status(401).send({
-                statusCode: 401,
-                error: 'Unauthorized',
-                message: 'Email ou senha inválidos',
-            });
+            return reply.status(401).send({ statusCode: 401, error: 'Unauthorized', message: 'Email ou senha inválidos' });
         }
 
         const validPassword = await bcrypt.compare(password, user.password);
-        console.log('Senha válida:', validPassword);
 
         if (!validPassword) {
-            return reply.status(401).send({
-                statusCode: 401,
-                error: 'Unauthorized',
-                message: 'Email ou senha inválidos',
-            });
+            return reply.status(401).send({ statusCode: 401, error: 'Unauthorized', message: 'Email ou senha inválidos' });
         }
 
-        const accessToken = signAccessToken(user.id);
+        const accessToken = signAccessToken(user.id, {
+            role: user.role ?? 'owner',
+            tipo_conta: user.tipo_conta ?? 'corretor',
+            organization_id: user.organization_id ?? null,
+        });
         const refreshToken = signRefreshToken(user.id);
 
 
@@ -110,6 +154,9 @@ export const authController = {
                 id: user.id,
                 name: user.name,
                 email: user.email,
+                tipo_conta: user.tipo_conta ?? 'corretor',
+                role: user.role ?? 'owner',
+                organization_id: user.organization_id ?? null,
             },
         });
     },

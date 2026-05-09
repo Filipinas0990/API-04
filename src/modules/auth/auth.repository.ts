@@ -2,6 +2,20 @@ import { eq } from 'drizzle-orm';
 import { db } from '../../database/client';
 import { users, refreshTokens } from './auth.schema';
 
+const publicUserFields = {
+    id: users.id,
+    name: users.name,
+    email: users.email,
+    phone: users.phone,
+    creci: users.creci,
+    avatar_url: users.avatar_url,
+    role: users.role,
+    tipo_conta: users.tipo_conta,
+    organization_id: users.organization_id,
+    created_at: users.created_at,
+    updated_at: users.updated_at,
+};
+
 export const authRepository = {
     async findByEmail(email: string) {
         const result = await db.select().from(users).where(eq(users.email, email));
@@ -9,16 +23,7 @@ export const authRepository = {
     },
 
     async findById(id: string) {
-        const result = await db.select({
-            id: users.id,
-            name: users.name,
-            email: users.email,
-            phone: users.phone,
-            creci: users.creci,
-            avatar_url: users.avatar_url,
-            created_at: users.created_at,
-            updated_at: users.updated_at,
-        }).from(users).where(eq(users.id, id));
+        const result = await db.select(publicUserFields).from(users).where(eq(users.id, id));
         return result[0] ?? null;
     },
 
@@ -28,15 +33,11 @@ export const authRepository = {
         password: string;
         phone?: string;
         creci?: string;
+        tipo_conta?: string;
+        role?: string;
+        organization_id?: string;
     }) {
-        const [user] = await db.insert(users).values(data).returning({
-            id: users.id,
-            name: users.name,
-            email: users.email,
-            phone: users.phone,
-            creci: users.creci,
-            created_at: users.created_at,
-        });
+        const [user] = await db.insert(users).values(data).returning(publicUserFields);
         return user;
     },
 
@@ -45,20 +46,14 @@ export const authRepository = {
         phone?: string;
         creci?: string;
         avatar_url?: string;
+        role?: string;
+        organization_id?: string | null;
     }) {
         const [user] = await db
             .update(users)
             .set({ ...data, updated_at: new Date() })
             .where(eq(users.id, id))
-            .returning({
-                id: users.id,
-                name: users.name,
-                email: users.email,
-                phone: users.phone,
-                creci: users.creci,
-                avatar_url: users.avatar_url,
-                updated_at: users.updated_at,
-            });
+            .returning(publicUserFields);
         return user;
     },
 
