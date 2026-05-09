@@ -39,3 +39,12 @@ export async function requireImobiliaria(req: FastifyRequest, reply: FastifyRepl
         return reply.status(403).send({ statusCode: 403, error: 'Forbidden', message: 'Acesso exclusivo para imobiliárias' });
     }
 }
+
+// Protege endpoints de criação de conta com chave secreta de admin
+export async function adminMiddleware(req: FastifyRequest, reply: FastifyReply) {
+    const { env } = await import('../config/env');
+    const key = req.headers['x-admin-key'];
+    if (!key || key !== env.ADMIN_SECRET) {
+        return reply.status(401).send({ statusCode: 401, error: 'Unauthorized', message: 'Chave de admin inválida' });
+    }
+}

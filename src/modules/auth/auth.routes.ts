@@ -1,11 +1,11 @@
 import { FastifyInstance } from 'fastify';
 import { authController } from './auth.controller';
-import { authMiddleware } from '../../middlewares/auth.middleware';
+import { authMiddleware, adminMiddleware } from '../../middlewares/auth.middleware';
 
 export async function authRoutes(app: FastifyInstance) {
 
-    app.post('/register', authController.register);
-    app.post('/register-imobiliaria', authController.registerImobiliaria);
+    app.post('/register', { preHandler: adminMiddleware }, authController.register);
+    app.post('/register-imobiliaria', { preHandler: adminMiddleware }, authController.registerImobiliaria);
     app.post('/login', authController.login);
     app.post('/refresh', authController.refresh);
     app.delete('/logout', authController.logout);

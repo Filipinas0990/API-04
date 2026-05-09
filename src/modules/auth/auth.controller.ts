@@ -12,6 +12,7 @@ const registerSchema = z.object({
     password: z.string().min(8, 'Senha deve ter ao menos 8 caracteres'),
     phone: z.string().optional(),
     creci: z.string().optional(),
+    organization_id: z.string().uuid('organization_id inválido').optional(),
 });
 
 const registerImobiliariaSchema = z.object({
@@ -51,11 +52,19 @@ export const authController = {
             return reply.status(409).send({ statusCode: 409, error: 'Conflict', message: 'Email já cadastrado' });
         }
 
+        // Se vier organization_id, valida que a org existe e vincula como agent
+        if (data.organization_id) {
+            const org = await orgRepository.findOrgById(data.organization_id);
+            if (!org) {
+                return reply.status(404).send({ statusCode: 404, error: 'Not Found', message: 'Imobiliária não encontrada' });
+            }
+        }
+
         const user = await authRepository.create({
             ...data,
             password: await bcrypt.hash(data.password, 12),
             tipo_conta: 'corretor',
-            role: 'owner',
+            role: data.organization_id ? 'agent' : 'owner',
         });
 
         return reply.status(201).send(user);
