@@ -24,8 +24,10 @@ type Flow = {
     off_hours_end: string | null;
 };
 
+const MAX_DELAY_MS = 30_000;
+
 function sleep(ms: number) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise(resolve => setTimeout(resolve, Math.min(ms, MAX_DELAY_MS)));
 }
 
 // Verifica se horário atual (Brasília UTC-3) está no período de folga

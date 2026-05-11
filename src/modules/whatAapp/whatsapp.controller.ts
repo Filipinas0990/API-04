@@ -88,6 +88,15 @@ export const whatsappController = {
 
     // ── WEBHOOK ──────────────────────────────────
     async webhook(req: FastifyRequest, reply: FastifyReply) {
+        // Valida token secreto se configurado
+        if (env.WEBHOOK_SECRET) {
+            const token = (req.query as Record<string, string>).token
+                ?? req.headers['x-webhook-token'];
+            if (token !== env.WEBHOOK_SECRET) {
+                return reply.status(401).send({ message: 'Não autorizado' });
+            }
+        }
+
         const body = req.body as Record<string, unknown>;
         const event = body?.event as string;
         if (event !== 'messages.upsert') return reply.send({ ok: true });
@@ -356,9 +365,14 @@ export const whatsappController = {
     },
 
     // ── EVOLUTION PROXY ───────────────────────────────────────────────────────
-    // Repassa qualquer chamada para a Evolution API injetando o apikey
+    // Repassa chamadas para a Evolution API bloqueando endpoints destrutivos
     async evolutionProxy(req: FastifyRequest, reply: FastifyReply) {
         const wildcard = (req.params as Record<string, string>)['*'] ?? '';
+
+        const BLOCKED = ['instance/logout', 'instance/delete', 'instance/restart', 'instance/create'];
+        if (BLOCKED.some(path => wildcard.toLowerCase().startsWith(path))) {
+            return reply.status(403).send({ message: 'Endpoint bloqueado por segurança' });
+        }
         const qs = new URLSearchParams(req.query as Record<string, string>).toString();
         const targetUrl = `${env.EVOLUTION_API_URL}/${wildcard}${qs ? `?${qs}` : ''}`;
 

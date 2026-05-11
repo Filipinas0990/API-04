@@ -27,5 +27,11 @@ export async function orgRoutes(app: FastifyInstance) {
         imob.get('/invites', orgController.listInvites);
         imob.post('/invites', orgController.createInvite);
         imob.delete('/invites/:id', orgController.cancelInvite);
+
+        // Dashboard e visão consolidada da equipe
+        imob.get('/dashboard', orgController.getTeamDashboard);
+        imob.get('/pipeline', orgController.getOrgPipeline);
+        imob.get('/equipe/leads', orgController.listOrgLeads);
+        imob.get('/equipe/vendas', orgController.listOrgVendas);
     });
 }

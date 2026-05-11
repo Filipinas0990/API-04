@@ -253,4 +253,20 @@ export const authController = {
         const user = await authRepository.update(req.user.id, data);
         return reply.send(user);
     },
+
+    async resetPassword(req: FastifyRequest, reply: FastifyReply) {
+        const { email, new_password } = z.object({
+            email: z.string().email(),
+            new_password: z.string().min(8, 'Senha deve ter ao menos 8 caracteres'),
+        }).parse(req.body);
+
+        const user = await authRepository.findByEmail(email);
+        if (!user) return reply.status(404).send({ message: 'Usuário não encontrado' });
+
+        const hashed = await bcrypt.hash(new_password, 12);
+        await authRepository.updatePassword(user.id, hashed);
+        await authRepository.deleteAllRefreshTokens(user.id);
+
+        return reply.send({ message: 'Senha redefinida com sucesso' });
+    },
 };

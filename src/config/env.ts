@@ -28,6 +28,7 @@ const envSchema = z.object({
     OPENAI_API_KEY: z.string().min(1),
 
     ADMIN_SECRET: z.string().min(16, 'ADMIN_SECRET deve ter ao menos 16 caracteres'),
+    WEBHOOK_SECRET: z.string().min(8).optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

@@ -1,7 +1,10 @@
-import { eq, and } from 'drizzle-orm';
+import { eq, and, inArray, count, sum } from 'drizzle-orm';
 import { db } from '../../database/client';
 import { organizations, invites } from './org.db.schema';
 import { users } from '../auth/auth.schema';
+import { leads } from '../leads/lead.db.schema';
+import { vendas } from '../vendas/venda.db.schema';
+import { visitas } from '../visitas/visita.db.schema';
 
 export const orgRepository = {
 
@@ -72,5 +75,125 @@ export const orgRepository = {
             .where(eq(invites.id, id))
             .returning();
         return invite ?? null;
+    },
+
+    // ── DASHBOARD DA EQUIPE ───────────────────────────────────────────────────
+
+    async getTeamDashboard(orgId: string) {
+        const memberRows = await db.select({
+            id: users.id,
+            name: users.name,
+            email: users.email,
+            avatar_url: users.avatar_url,
+            creci: users.creci,
+            role: users.role,
+        }).from(users).where(eq(users.organization_id, orgId));
+
+        if (!memberRows.length) {
+            return { members: [], totals: { leads: 0, vendas: 0, valor_total: '0.00', visitas: 0 } };
+        }
+
+        const memberIds = memberRows.map(m => m.id);
+
+        const [leadCounts, vendaCounts, visitaCounts] = await Promise.all([
+            db.select({ user_id: leads.user_id, total: count() })
+                .from(leads).where(inArray(leads.user_id, memberIds)).groupBy(leads.user_id),
+
+            db.select({ user_id: vendas.user_id, total: count(), valor_total: sum(vendas.valor) })
+                .from(vendas).where(inArray(vendas.user_id, memberIds)).groupBy(vendas.user_id),
+
+            db.select({ user_id: visitas.user_id, total: count() })
+                .from(visitas).where(inArray(visitas.user_id, memberIds)).groupBy(visitas.user_id),
+        ]);
+
+        const leadMap = Object.fromEntries(leadCounts.map(r => [r.user_id, Number(r.total)]));
+        const vendaMap = Object.fromEntries(vendaCounts.map(r => [r.user_id, { total: Number(r.total), valor: r.valor_total ?? '0' }]));
+        const visitaMap = Object.fromEntries(visitaCounts.map(r => [r.user_id, Number(r.total)]));
+
+        const members = memberRows.map(m => ({
+            ...m,
+            leads: leadMap[m.id] ?? 0,
+            vendas: vendaMap[m.id]?.total ?? 0,
+            valor_vendas: vendaMap[m.id]?.valor ?? '0',
+            visitas: visitaMap[m.id] ?? 0,
+        })).sort((a, b) => parseFloat(b.valor_vendas) - parseFloat(a.valor_vendas));
+
+        const totals = {
+            leads: members.reduce((acc, m) => acc + m.leads, 0),
+            vendas: members.reduce((acc, m) => acc + m.vendas, 0),
+            valor_total: members.reduce((acc, m) => acc + parseFloat(m.valor_vendas), 0).toFixed(2),
+            visitas: members.reduce((acc, m) => acc + m.visitas, 0),
+        };
+
+        return { members, totals };
+    },
+
+    // ── PIPELINE CONSOLIDADO ─────────────────────────────────────────────────
+
+    async getOrgPipeline(orgId: string) {
+        const rows = await db.select({
+            id: leads.id,
+            name: leads.name,
+            telefone: leads.telefone,
+            email: leads.email,
+            temperatura: leads.temperatura,
+            status: leads.status,
+            interesse: leads.interesse,
+            created_at: leads.created_at,
+            corretor_id: users.id,
+            corretor_name: users.name,
+        })
+        .from(leads)
+        .innerJoin(users, eq(leads.user_id, users.id))
+        .where(eq(users.organization_id, orgId))
+        .orderBy(leads.created_at);
+
+        return {
+            novo_cliente: rows.filter(l => l.status === 'novo_cliente'),
+            em_contato: rows.filter(l => l.status === 'em_contato'),
+            visita_marcada: rows.filter(l => l.status === 'visita_marcada'),
+            proposta_enviada: rows.filter(l => l.status === 'proposta_enviada'),
+            cliente_desistiu: rows.filter(l => l.status === 'cliente_desistiu'),
+        };
+    },
+
+    // ── TODOS OS LEADS DA ORG ────────────────────────────────────────────────
+
+    async listOrgLeads(orgId: string) {
+        return db.select({
+            id: leads.id,
+            name: leads.name,
+            telefone: leads.telefone,
+            email: leads.email,
+            temperatura: leads.temperatura,
+            status: leads.status,
+            interesse: leads.interesse,
+            created_at: leads.created_at,
+            corretor_id: users.id,
+            corretor_name: users.name,
+        })
+        .from(leads)
+        .innerJoin(users, eq(leads.user_id, users.id))
+        .where(eq(users.organization_id, orgId))
+        .orderBy(leads.created_at);
+    },
+
+    // ── TODAS AS VENDAS DA ORG ───────────────────────────────────────────────
+
+    async listOrgVendas(orgId: string) {
+        return db.select({
+            id: vendas.id,
+            tipo: vendas.tipo,
+            status: vendas.status,
+            valor: vendas.valor,
+            data_venda: vendas.data_venda,
+            created_at: vendas.created_at,
+            corretor_id: users.id,
+            corretor_name: users.name,
+        })
+        .from(vendas)
+        .innerJoin(users, eq(vendas.user_id, users.id))
+        .where(eq(users.organization_id, orgId))
+        .orderBy(vendas.created_at);
     },
 };

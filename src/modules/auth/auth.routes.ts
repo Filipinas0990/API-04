@@ -6,6 +6,7 @@ export async function authRoutes(app: FastifyInstance) {
 
     app.post('/register', { preHandler: adminMiddleware }, authController.register);
     app.post('/register-imobiliaria', { preHandler: adminMiddleware }, authController.registerImobiliaria);
+    app.post('/reset-password', { preHandler: adminMiddleware }, authController.resetPassword);
     app.post('/login', authController.login);
     app.post('/refresh', authController.refresh);
     app.delete('/logout', authController.logout);

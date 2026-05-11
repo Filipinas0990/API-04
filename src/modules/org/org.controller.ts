@@ -97,6 +97,30 @@ export const orgController = {
         return reply.send({ email: invite.email, organization: org, expires_at: invite.expires_at });
     },
 
+    // ── GET /org/dashboard ───────────────────────────────────────────────────
+    async getTeamDashboard(req: FastifyRequest, reply: FastifyReply) {
+        const data = await orgRepository.getTeamDashboard(req.user.organization_id!);
+        return reply.send(data);
+    },
+
+    // ── GET /org/pipeline ────────────────────────────────────────────────────
+    async getOrgPipeline(req: FastifyRequest, reply: FastifyReply) {
+        const pipeline = await orgRepository.getOrgPipeline(req.user.organization_id!);
+        return reply.send(pipeline);
+    },
+
+    // ── GET /org/equipe/leads ────────────────────────────────────────────────
+    async listOrgLeads(req: FastifyRequest, reply: FastifyReply) {
+        const data = await orgRepository.listOrgLeads(req.user.organization_id!);
+        return reply.send(data);
+    },
+
+    // ── GET /org/equipe/vendas ───────────────────────────────────────────────
+    async listOrgVendas(req: FastifyRequest, reply: FastifyReply) {
+        const data = await orgRepository.listOrgVendas(req.user.organization_id!);
+        return reply.send(data);
+    },
+
     // ── POST /org/invites/:token/accept (autenticado) ─────────────────────────
     async acceptInvite(req: FastifyRequest, reply: FastifyReply) {
         const { token } = req.params as { token: string };

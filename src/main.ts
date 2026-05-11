@@ -4,6 +4,14 @@ import 'dotenv/config';
 import { env } from './config/env';
 import { iniciarJobLembretes } from './modules/whatAapp/lembrete-visita.job';
 
+process.on('uncaughtException', (err) => {
+    console.error('[uncaughtException] Erro não capturado — processo continuando:', err);
+});
+
+process.on('unhandledRejection', (reason) => {
+    console.error('[unhandledRejection] Promise rejeitada não tratada:', reason);
+});
+
 async function main() {
     const app = buildApp();
 

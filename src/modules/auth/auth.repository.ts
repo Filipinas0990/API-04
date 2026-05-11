@@ -77,4 +77,10 @@ export const authRepository = {
     async deleteAllRefreshTokens(userId: string) {
         await db.delete(refreshTokens).where(eq(refreshTokens.user_id, userId));
     },
+
+    async updatePassword(id: string, hashedPassword: string) {
+        await db.update(users)
+            .set({ password: hashedPassword, updated_at: new Date() })
+            .where(eq(users.id, id));
+    },
 };
