@@ -68,7 +68,7 @@ export const visitaRepository = {
     // Visitas nas próximas 23h–25h com telefone cadastrado e sem lembrete enviado
     async findVisitasParaLembrete() {
         return db.select().from(visitas).where(and(
-            sql`${visitas.data} BETWEEN NOW() + INTERVAL '23 hours' AND NOW() + INTERVAL '25 hours'`,
+            sql`${visitas.data} BETWEEN NOW() + INTERVAL '22 hours' AND NOW() + INTERVAL '23 hours'`,
             isNull(visitas.lembrete_enviado_at),
             isNotNull(visitas.telefone_cliente),
         ));

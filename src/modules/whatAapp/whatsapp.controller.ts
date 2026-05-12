@@ -30,10 +30,14 @@ const automacaoSchema = z.object({
     nos: z.array(z.record(z.string(), z.unknown())).default([]),
 });
 
+function instanceName(userId: string): string {
+    return `inst-${userId.split('-')[0]}`;
+}
+
 export const whatsappController = {
     // ── STATUS ──────────────────────────────────
-    async getStatus(_req: FastifyRequest, reply: FastifyReply) {
-        const status = await evolutionService.getStatus();
+    async getStatus(req: FastifyRequest, reply: FastifyReply) {
+        const status = await evolutionService.getStatus(instanceName(req.user.id));
         return reply.send(status);
     },
 
@@ -71,7 +75,7 @@ export const whatsappController = {
     async sendMensagem(req: FastifyRequest, reply: FastifyReply) {
         const { telefone, mensagem } = sendSchema.parse(req.body);
         const conversa = await whatsappRepository.findOrCreateConversa(req.user.id, telefone);
-        const ok = await evolutionService.sendText(telefone, mensagem);
+        const ok = await evolutionService.sendText(instanceName(req.user.id), telefone, mensagem);
         await whatsappRepository.saveMensagem({
             user_id: req.user.id,
             conversa_id: conversa.id,
@@ -128,10 +132,10 @@ export const whatsappController = {
 
                     if (confirmou) {
                         await visitaRepository.marcarConfirmada(visita.id, true);
-                        await evolutionService.sendText(telefone, '✅ Perfeito! Visita confirmada. Te esperamos lá! 🏡');
+                        await evolutionService.sendText(instanceName, telefone, '✅ Perfeito! Visita confirmada. Te esperamos lá! 🏡');
                     } else if (recusou) {
                         await visitaRepository.marcarConfirmada(visita.id, false);
-                        await evolutionService.sendText(telefone, 'Tudo bem! Um de nossos corretores vai entrar em contato. 😊');
+                        await evolutionService.sendText(instanceName, telefone, 'Tudo bem! Um de nossos corretores vai entrar em contato. 😊');
                         const nome = visita.nome_cliente ?? telefone;
                         const dataFormatada = new Date(visita.data).toLocaleString('pt-BR', {
                             timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short',
@@ -146,7 +150,7 @@ export const whatsappController = {
                         await visitaRepository.marcarTarefaLembreteCriada(visita.id);
                     } else {
                         // Resposta não reconhecida — re-prompt sem cair no fluxo de automação
-                        await evolutionService.sendText(telefone,
+                        await evolutionService.sendText(instanceName, telefone,
                             'Não entendi sua resposta. 😊\nPor favor, responda:\n*1 - Sim, confirmo ✅*\n*2 - Não poderei ir ❌*');
                     }
                     return; // não processa como flow normal
@@ -243,7 +247,7 @@ export const whatsappController = {
                 const msgFinal = mensagem
                     .replace('{nome}', lead.name)
                     .replace('{interesse}', lead.interesse ?? '');
-                const ok = await evolutionService.sendText(lead.telefone, msgFinal);
+                const ok = await evolutionService.sendText(instanceName(req.user.id), lead.telefone, msgFinal);
                 if (ok) {
                     enviados++;
                     const conversa = await whatsappRepository.findOrCreateConversa(req.user.id, lead.telefone, lead.name);
@@ -364,14 +368,38 @@ export const whatsappController = {
         return reply.status(204).send();
     },
 
+    // ── CRIAR INSTÂNCIA (controlado) ─────────────────────────────────────────
+    async createInstance(req: FastifyRequest, reply: FastifyReply) {
+        const name = instanceName(req.user.id);
+        const response = await fetch(`${env.EVOLUTION_API_URL}/instance/create`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'apikey': env.EVOLUTION_API_KEY,
+            },
+            body: JSON.stringify({
+                instanceName: name,
+                qrcode: true,
+                integration: 'WHATSAPP-BAILEYS',
+            }),
+        });
+        const data = await response.json();
+        return reply.status(response.status).send(data);
+    },
+
     // ── EVOLUTION PROXY ───────────────────────────────────────────────────────
     // Repassa chamadas para a Evolution API bloqueando endpoints destrutivos
     async evolutionProxy(req: FastifyRequest, reply: FastifyReply) {
         const wildcard = (req.params as Record<string, string>)['*'] ?? '';
 
-        const BLOCKED = ['instance/logout', 'instance/delete', 'instance/restart', 'instance/create'];
+        const BLOCKED = ['instance/logout', 'instance/delete', 'instance/restart'];
         if (BLOCKED.some(path => wildcard.toLowerCase().startsWith(path))) {
             return reply.status(403).send({ message: 'Endpoint bloqueado por segurança' });
+        }
+
+        // Criação de instância é controlada — deriva o nome do user.id
+        if (wildcard.toLowerCase() === 'instance/create') {
+            return whatsappController.createInstance(req, reply);
         }
         const qs = new URLSearchParams(req.query as Record<string, string>).toString();
         const targetUrl = `${env.EVOLUTION_API_URL}/${wildcard}${qs ? `?${qs}` : ''}`;

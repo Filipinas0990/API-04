@@ -24,7 +24,7 @@ const envSchema = z.object({
 
     EVOLUTION_API_URL: z.string().url(),
     EVOLUTION_API_KEY: z.string().min(1),
-    EVOLUTION_INSTANCE: z.string().min(1),
+    EVOLUTION_INSTANCE: z.string().optional(),
     OPENAI_API_KEY: z.string().min(1),
 
     ADMIN_SECRET: z.string().min(16, 'ADMIN_SECRET deve ter ao menos 16 caracteres'),

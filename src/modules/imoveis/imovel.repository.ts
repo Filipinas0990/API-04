@@ -1,4 +1,4 @@
-import { eq, and, gte, lte, ilike } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { db } from '../../database/client';
 import { imoveis } from './imovel.db.schema';
 

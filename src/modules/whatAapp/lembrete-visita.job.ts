@@ -18,7 +18,9 @@ export function iniciarJobLembretes() {
                     timeStyle: 'short',
                 });
 
+                const instName = `inst-${v.user_id.split('-')[0]}`;
                 await evolutionService.sendText(
+                    instName,
                     v.telefone_cliente,
                     `Olá ${v.nome_cliente ?? 'tudo bem'}! 👋\n\n` +
                     `Lembrando que você tem uma visita agendada para *${dataFormatada}*.\n\n` +

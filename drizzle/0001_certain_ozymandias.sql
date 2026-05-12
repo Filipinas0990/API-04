@@ -243,7 +243,7 @@ CREATE TABLE "mensagens" (
 --> statement-breakpoint
 ALTER TABLE "leads" DROP CONSTRAINT "leads_email_unique";--> statement-breakpoint
 ALTER TABLE "leads" ALTER COLUMN "email" DROP NOT NULL;--> statement-breakpoint
-ALTER TABLE "leads" ALTER COLUMN "temperatura" SET DATA TYPE integer;--> statement-breakpoint
+ALTER TABLE "leads" ALTER COLUMN "temperatura" SET DATA TYPE integer USING temperatura::integer;--> statement-breakpoint
 ALTER TABLE "leads" ALTER COLUMN "temperatura" SET DEFAULT 1;--> statement-breakpoint
 ALTER TABLE "leads" ADD COLUMN "user_id" uuid NOT NULL;--> statement-breakpoint
 ALTER TABLE "leads" ADD COLUMN "telefone" text NOT NULL;--> statement-breakpoint

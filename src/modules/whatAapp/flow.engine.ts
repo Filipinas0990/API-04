@@ -81,9 +81,8 @@ async function executeNode(
     // ── START ────────────────────────────────────────────────────────────────
     if (type === 'start') {
         if (node.message) {
-            const delayMs = (node.delay_seconds ?? 0) * 1000;
             if (delayMs > 0) await sleep(delayMs);
-            await evolutionService.sendText(telefone, node.message);
+            await evolutionService.sendText(instanceName, telefone, node.message);
             await whatsappRepository.saveMensagem({
                 user_id: userId, conversa_id: conversaId,
                 telefone, direcao: 'enviada', conteudo: node.message,
@@ -101,7 +100,7 @@ async function executeNode(
     if (type === 'message' || type === 'mensagem') {
         if (delayMs > 0) await sleep(delayMs);
         if (node.message) {
-            await evolutionService.sendText(telefone, node.message);
+            await evolutionService.sendText(instanceName, telefone, node.message);
             await whatsappRepository.saveMensagem({
                 user_id: userId, conversa_id: conversaId,
                 telefone, direcao: 'enviada', conteudo: node.message,
@@ -119,7 +118,7 @@ async function executeNode(
     if (type === 'question' || type === 'pergunta') {
         if (delayMs > 0) await sleep(delayMs);
         if (node.message) {
-            await evolutionService.sendText(telefone, node.message);
+            await evolutionService.sendText(instanceName, telefone, node.message);
             await whatsappRepository.saveMensagem({
                 user_id: userId, conversa_id: conversaId,
                 telefone, direcao: 'enviada', conteudo: node.message,
@@ -141,7 +140,7 @@ async function executeNode(
         const optLines = options.map((o, i) => `${i + 1}. ${o.label}`).join('\n');
         const text = node.message ? `${node.message}\n\n${optLines}` : optLines;
         if (text.trim()) {
-            await evolutionService.sendText(telefone, text);
+            await evolutionService.sendText(instanceName, telefone, text);
             await whatsappRepository.saveMensagem({
                 user_id: userId, conversa_id: conversaId,
                 telefone, direcao: 'enviada', conteudo: text,
@@ -158,7 +157,7 @@ async function executeNode(
     if (type === 'transfer' || type === 'transferir') {
         if (delayMs > 0) await sleep(delayMs);
         if (node.message) {
-            await evolutionService.sendText(telefone, node.message);
+            await evolutionService.sendText(instanceName, telefone, node.message);
             await whatsappRepository.saveMensagem({
                 user_id: userId, conversa_id: conversaId,
                 telefone, direcao: 'enviada', conteudo: node.message,
@@ -174,7 +173,7 @@ async function executeNode(
     if (type === 'end' || type === 'finalizar') {
         if (delayMs > 0) await sleep(delayMs);
         if (node.message) {
-            await evolutionService.sendText(telefone, node.message);
+            await evolutionService.sendText(instanceName, telefone, node.message);
             await whatsappRepository.saveMensagem({
                 user_id: userId, conversa_id: conversaId,
                 telefone, direcao: 'enviada', conteudo: node.message,

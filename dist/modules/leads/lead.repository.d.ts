@@ -1,0 +1,166 @@
+export declare const leadRepository: {
+    findAll(userId: string, filters?: {
+        search?: string;
+        status?: string;
+    }): Promise<{
+        id: string;
+        user_id: string;
+        name: string;
+        telefone: string;
+        email: string | null;
+        gestor_responsavel: string | null;
+        temperatura: number | null;
+        interesse: string | null;
+        observacoes: string | null;
+        status: string | null;
+        created_at: Date | null;
+        updated_at: Date | null;
+    }[]>;
+    findById(id: string, userId: string): Promise<{
+        id: string;
+        user_id: string;
+        name: string;
+        telefone: string;
+        email: string | null;
+        gestor_responsavel: string | null;
+        temperatura: number | null;
+        interesse: string | null;
+        observacoes: string | null;
+        status: string | null;
+        created_at: Date | null;
+        updated_at: Date | null;
+    }>;
+    create(userId: string, data: {
+        name: string;
+        telefone: string;
+        email?: string;
+        gestor_responsavel?: string;
+        temperatura?: number;
+        interesse?: string;
+        observacoes?: string;
+        status?: string;
+    }): Promise<{
+        id: string;
+        name: string;
+        email: string | null;
+        created_at: Date | null;
+        updated_at: Date | null;
+        status: string | null;
+        user_id: string;
+        telefone: string;
+        gestor_responsavel: string | null;
+        temperatura: number | null;
+        interesse: string | null;
+        observacoes: string | null;
+    }>;
+    update(id: string, userId: string, data: Partial<{
+        name: string;
+        telefone: string;
+        email: string;
+        gestor_responsavel: string;
+        temperatura: number;
+        interesse: string;
+        observacoes: string;
+        status: string;
+    }>): Promise<{
+        id: string;
+        user_id: string;
+        name: string;
+        telefone: string;
+        email: string | null;
+        gestor_responsavel: string | null;
+        temperatura: number | null;
+        interesse: string | null;
+        observacoes: string | null;
+        status: string | null;
+        created_at: Date | null;
+        updated_at: Date | null;
+    }>;
+    delete(id: string, userId: string): Promise<{
+        id: string;
+        name: string;
+        email: string | null;
+        created_at: Date | null;
+        updated_at: Date | null;
+        status: string | null;
+        user_id: string;
+        telefone: string;
+        gestor_responsavel: string | null;
+        temperatura: number | null;
+        interesse: string | null;
+        observacoes: string | null;
+    }>;
+    getPipeline(userId: string): Promise<{
+        novo_cliente: {
+            id: string;
+            user_id: string;
+            name: string;
+            telefone: string;
+            email: string | null;
+            gestor_responsavel: string | null;
+            temperatura: number | null;
+            interesse: string | null;
+            observacoes: string | null;
+            status: string | null;
+            created_at: Date | null;
+            updated_at: Date | null;
+        }[];
+        em_contato: {
+            id: string;
+            user_id: string;
+            name: string;
+            telefone: string;
+            email: string | null;
+            gestor_responsavel: string | null;
+            temperatura: number | null;
+            interesse: string | null;
+            observacoes: string | null;
+            status: string | null;
+            created_at: Date | null;
+            updated_at: Date | null;
+        }[];
+        visita_marcada: {
+            id: string;
+            user_id: string;
+            name: string;
+            telefone: string;
+            email: string | null;
+            gestor_responsavel: string | null;
+            temperatura: number | null;
+            interesse: string | null;
+            observacoes: string | null;
+            status: string | null;
+            created_at: Date | null;
+            updated_at: Date | null;
+        }[];
+        proposta_enviada: {
+            id: string;
+            user_id: string;
+            name: string;
+            telefone: string;
+            email: string | null;
+            gestor_responsavel: string | null;
+            temperatura: number | null;
+            interesse: string | null;
+            observacoes: string | null;
+            status: string | null;
+            created_at: Date | null;
+            updated_at: Date | null;
+        }[];
+        cliente_desistiu: {
+            id: string;
+            user_id: string;
+            name: string;
+            telefone: string;
+            email: string | null;
+            gestor_responsavel: string | null;
+            temperatura: number | null;
+            interesse: string | null;
+            observacoes: string | null;
+            status: string | null;
+            created_at: Date | null;
+            updated_at: Date | null;
+        }[];
+    }>;
+};
+//# sourceMappingURL=lead.repository.d.ts.map
