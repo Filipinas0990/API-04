@@ -43,6 +43,13 @@
       "when": 1778351329095,
       "tag": "0005_amazing_selene",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1778860800000,
+      "tag": "0006_campanhas_anti_ban",
+      "breakpoints": true
     }
   ]
 }
