@@ -83,6 +83,12 @@ export const whatsappRepository = {
         return d ?? null;
     },
 
+    async findDisparoById(id: string, userId: string) {
+        const result = await db.select().from(disparos)
+            .where(and(eq(disparos.id, id), eq(disparos.user_id, userId)));
+        return result[0] ?? null;
+    },
+
     async listDisparos(userId: string, limit = 50, offset = 0) {
         return db.select().from(disparos)
             .where(eq(disparos.user_id, userId))

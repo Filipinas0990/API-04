@@ -4,6 +4,7 @@ import { whatsappRepository } from './whatsapp.repository';
 import { evolutionService } from './evolution.service';
 import { assistenteService } from './assistente.service';
 import { flowEngine } from './flow.engine';
+import { campanhaRunner } from './campanha.runner';
 import { env } from '../../config/env';
 import { visitaRepository } from '../visitas/visita.repository';
 import { tarefaRepository } from '../tarefas/tarefa.repository';
@@ -20,6 +21,23 @@ const disparoSchema = z.object({
     leads_ids: z.array(z.string().uuid()).min(1).max(20),
     mensagem: z.string().min(1),
     template: z.string().optional(),
+});
+
+// Etapas válidas do kanban (= status do lead)
+const KANBAN_ETAPAS = [
+    'novo_cliente', 'em_contato', 'visita_marcada', 'proposta_enviada', 'cliente_desistiu',
+] as const;
+
+const campanhaSchema = z.object({
+    // Origem dos leads: lista direta OU etapa do kanban
+    leads_ids: z.array(z.string().uuid()).min(1).max(200).optional(),
+    kanban_etapa: z.enum(KANBAN_ETAPAS).optional(),
+    mensagem: z.string().min(1),
+    funil_id: z.string().uuid().optional(),
+    // Intervalo anti-ban: 60s padrão, mínimo 30s, máximo 1h
+    intervalo_segundos: z.number().int().min(30).max(3600).default(60),
+}).refine(d => d.leads_ids?.length || d.kanban_etapa, {
+    message: 'Informe leads_ids ou kanban_etapa',
 });
 
 const automacaoSchema = z.object({
@@ -274,6 +292,101 @@ export const whatsappController = {
             enviados, falhas, status: 'concluido',
         });
         return reply.send(resultado);
+    },
+
+    // ── CAMPANHAS (novo) ──────────────────────────
+    async iniciarCampanha(req: FastifyRequest, reply: FastifyReply) {
+        const dados = campanhaSchema.parse(req.body);
+
+        // Resolve leads: por ID direto ou por etapa do kanban
+        let leads: Array<{ id: string; name: string; telefone: string; interesse?: string | null }>;
+        if (dados.kanban_etapa) {
+            leads = await leadRepository.findByKanbanEtapa(req.user.id, dados.kanban_etapa);
+        } else {
+            const found = await Promise.all(
+                dados.leads_ids!.map(id => leadRepository.findById(id, req.user.id)),
+            );
+            leads = found.filter((l): l is NonNullable<typeof l> => l != null);
+        }
+
+        const leadsComTelefone = leads.filter(l => l.telefone);
+        if (!leadsComTelefone.length) {
+            return reply.status(400).send({ message: 'Nenhum lead com telefone encontrado' });
+        }
+
+        // Se veio funil_id, usa a mensagem do primeiro nó MESSAGE do flow
+        let mensagemFinal = dados.mensagem;
+        if (dados.funil_id) {
+            const nodes = await whatsappRepository.listNodes(dados.funil_id);
+            const primeiroMsg = nodes.find(n => n.type === 'message' && n.message);
+            if (primeiroMsg?.message) mensagemFinal = primeiroMsg.message;
+        }
+
+        // Cria registro da campanha
+        const disparo = await whatsappRepository.createDisparo(req.user.id, {
+            mensagem: mensagemFinal,
+            total: leadsComTelefone.length,
+            leads_ids: leadsComTelefone.map(l => l.id),
+            kanban_etapa: dados.kanban_etapa ?? null,
+            funil_id: dados.funil_id ?? null,
+            intervalo_segundos: dados.intervalo_segundos,
+            status: 'em_andamento',
+        });
+
+        // Calcula estimativa de tempo
+        const intervaloMs = dados.intervalo_segundos * 1000;
+        const tempoEstimadoMin = Math.ceil(
+            (leadsComTelefone.length * dados.intervalo_segundos) / 60,
+        );
+
+        // Dispara em background — responde imediatamente
+        campanhaRunner.iniciar({
+            disparoId: disparo.id,
+            userId: req.user.id,
+            leads: leadsComTelefone,
+            mensagem: mensagemFinal,
+            intervaloMs,
+        });
+
+        return reply.status(202).send({
+            id: disparo.id,
+            total: leadsComTelefone.length,
+            intervalo_segundos: dados.intervalo_segundos,
+            tempo_estimado_minutos: tempoEstimadoMin,
+            status: 'em_andamento',
+            message: `Campanha iniciada para ${leadsComTelefone.length} leads (~${tempoEstimadoMin} min)`,
+        });
+    },
+
+    async getProgresso(req: FastifyRequest, reply: FastifyReply) {
+        const { id } = req.params as { id: string };
+        const disparo = await whatsappRepository.findDisparoById(id, req.user.id);
+        if (!disparo) return reply.status(404).send({ message: 'Campanha não encontrada' });
+
+        const emExecucao = campanhaRunner.estaRodando(id);
+        return reply.send({
+            id: disparo.id,
+            status: disparo.status,
+            total: disparo.total,
+            enviados: disparo.enviados,
+            falhas: disparo.falhas,
+            em_execucao: emExecucao,
+            percentual: disparo.total
+                ? Math.round(((disparo.enviados ?? 0) + (disparo.falhas ?? 0)) / disparo.total * 100)
+                : 0,
+        });
+    },
+
+    async cancelarCampanha(req: FastifyRequest, reply: FastifyReply) {
+        const { id } = req.params as { id: string };
+        const disparo = await whatsappRepository.findDisparoById(id, req.user.id);
+        if (!disparo) return reply.status(404).send({ message: 'Campanha não encontrada' });
+
+        const cancelou = campanhaRunner.cancelar(id);
+        if (!cancelou) {
+            return reply.status(409).send({ message: 'Campanha não está em execução' });
+        }
+        return reply.send({ message: 'Cancelamento solicitado', id });
     },
 
     // ── AUTOMAÇÕES (legado) ───────────────────────

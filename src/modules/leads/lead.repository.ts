@@ -86,6 +86,15 @@ export const leadRepository = {
         return lead ?? null;
     },
 
+    // Leads filtrados por etapa do kanban (status) — usado pelos disparos de campanha
+    async findByKanbanEtapa(userId: string, etapa: string) {
+        return db
+            .select()
+            .from(leads)
+            .where(and(eq(leads.user_id, userId), eq(leads.status, etapa)))
+            .orderBy(leads.created_at);
+    },
+
     // Pipeline: leads agrupados por status
     async getPipeline(userId: string) {
         const allLeads = await db

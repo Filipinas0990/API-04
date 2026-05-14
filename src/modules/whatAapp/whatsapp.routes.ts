@@ -23,11 +23,17 @@ export async function whatsappRoutes(app: FastifyInstance) {
         // Assistente IA
         protectedApp.post('/assistente', whatsappController.assistente);
 
-        // Disparos
+        // Disparos (legado)
         protectedApp.get('/disparos', whatsappController.listDisparos);
         protectedApp.post('/disparos', whatsappController.iniciarDisparo);
         protectedApp.get('/disparos/limite', whatsappController.getLimiteDiario);
         protectedApp.get('/disparos/logs', whatsappController.listDisparoLogs);
+
+        // Campanhas (novo — com intervalo anti-ban e execução em background)
+        protectedApp.get('/campanhas', whatsappController.listDisparos);
+        protectedApp.post('/campanhas', whatsappController.iniciarCampanha);
+        protectedApp.get('/campanhas/:id/progresso', whatsappController.getProgresso);
+        protectedApp.delete('/campanhas/:id', whatsappController.cancelarCampanha);
 
         // Automações (legado)
         protectedApp.get('/automacoes', whatsappController.listAutomacoes);

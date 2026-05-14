@@ -34,7 +34,7 @@ export const mensagens = pgTable('mensagens', {
     index('mensagens_conversa_id_idx').on(table.conversa_id),
 ]);
 
-// ── DISPAROS ──────────────────────────────────────────
+// ── DISPAROS / CAMPANHAS ───────────────────────────────
 export const disparos = pgTable('disparos', {
     id: uuid('id').primaryKey().defaultRandom(),
     user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
@@ -43,8 +43,13 @@ export const disparos = pgTable('disparos', {
     total: integer('total').default(0),
     enviados: integer('enviados').default(0),
     falhas: integer('falhas').default(0),
-    status: text('status').default('pendente'),
+    status: text('status').default('pendente'), // pendente | em_andamento | concluido | cancelado | erro
     leads_ids: jsonb('leads_ids').default([]),
+    // Filtro de origem
+    kanban_etapa: text('kanban_etapa'),            // etapa do kanban usada como filtro
+    funil_id: uuid('funil_id'),                    // flow usado como template de mensagem
+    // Anti-ban: intervalo entre disparos
+    intervalo_segundos: integer('intervalo_segundos').default(60),
     created_at: timestamp('created_at').defaultNow(),
     updated_at: timestamp('updated_at').defaultNow(),
 });
