@@ -1,5 +1,10 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
+import { pipeline } from 'stream/promises';
+import { createWriteStream, createReadStream } from 'fs';
+import { mkdir, access } from 'fs/promises';
+import { randomUUID } from 'crypto';
+import { extname } from 'path';
 import { whatsappRepository } from './whatsapp.repository';
 import { evolutionService } from './evolution.service';
 import { assistenteService } from './assistente.service';
@@ -27,6 +32,20 @@ const disparoSchema = z.object({
 const KANBAN_ETAPAS = [
     'novo_cliente', 'em_contato', 'visita_marcada', 'proposta_enviada', 'cliente_desistiu',
 ] as const;
+
+const funilSchema = z.object({
+    nome: z.string().min(1).max(100),
+    descricao: z.string().max(500).optional(),
+    etapas: z.array(z.object({
+        tipo: z.enum(['texto', 'imagem', 'video', 'audio']),
+        conteudo: z.string().default(''),
+        ordem: z.number().int().min(0),
+        intervalo_antes: z.number().int().min(0).max(3600).default(0),
+    })).min(1),
+});
+
+const UPLOADS_DIR = '/app/uploads';
+const TIPOS_PERMITIDOS = ['image/', 'video/', 'audio/'];
 
 const campanhaSchema = z.object({
     // Origem dos leads: lista direta OU etapa do kanban
@@ -339,12 +358,24 @@ export const whatsappController = {
             (leadsComTelefone.length * dados.intervalo_segundos) / 60,
         );
 
+        // Se tem funil, carrega todas as etapas para o runner
+        let etapasDoCampanha: Array<{ tipo: 'texto' | 'imagem' | 'video' | 'audio'; conteudo: string; intervalo_antes: number }> | undefined;
+        if (dados.funil_id) {
+            const etapas = await whatsappRepository.listEtapasByFunilId(dados.funil_id);
+            etapasDoCampanha = etapas.map(e => ({
+                tipo: e.tipo as 'texto' | 'imagem' | 'video' | 'audio',
+                conteudo: e.conteudo,
+                intervalo_antes: e.intervalo_antes,
+            }));
+        }
+
         // Dispara em background — responde imediatamente
         campanhaRunner.iniciar({
             disparoId: disparo.id,
             userId: req.user.id,
             leads: leadsComTelefone,
             mensagem: mensagemFinal,
+            etapas: etapasDoCampanha,
             intervaloMs,
         });
 
@@ -387,6 +418,86 @@ export const whatsappController = {
             return reply.status(409).send({ message: 'Campanha não está em execução' });
         }
         return reply.send({ message: 'Cancelamento solicitado', id });
+    },
+
+    // ── FUNIS DE DISPARO ──────────────────────────
+    async listFunis(req: FastifyRequest, reply: FastifyReply) {
+        const lista = await whatsappRepository.listFunis(req.user.id);
+        return reply.send(lista);
+    },
+
+    async getFunilById(req: FastifyRequest, reply: FastifyReply) {
+        const { id } = req.params as { id: string };
+        const funil = await whatsappRepository.findFunilById(id, req.user.id);
+        if (!funil) return reply.status(404).send({ message: 'Funil não encontrado' });
+        return reply.send(funil);
+    },
+
+    async createFunil(req: FastifyRequest, reply: FastifyReply) {
+        const data = funilSchema.parse(req.body);
+        const funil = await whatsappRepository.createFunil(req.user.id, data);
+        return reply.status(201).send(funil);
+    },
+
+    async updateFunil(req: FastifyRequest, reply: FastifyReply) {
+        const { id } = req.params as { id: string };
+        const data = funilSchema.parse(req.body);
+        const funil = await whatsappRepository.updateFunil(id, req.user.id, data);
+        if (!funil) return reply.status(404).send({ message: 'Funil não encontrado' });
+        return reply.send(funil);
+    },
+
+    async deleteFunil(req: FastifyRequest, reply: FastifyReply) {
+        const { id } = req.params as { id: string };
+        const funil = await whatsappRepository.deleteFunil(id, req.user.id);
+        if (!funil) return reply.status(404).send({ message: 'Funil não encontrado' });
+        return reply.send({ message: 'Funil excluído' });
+    },
+
+    async uploadMidia(req: FastifyRequest, reply: FastifyReply) {
+        const data = await req.file();
+        if (!data) return reply.status(400).send({ message: 'Nenhum arquivo enviado' });
+
+        const mimetype = data.mimetype ?? '';
+        if (!TIPOS_PERMITIDOS.some(t => mimetype.startsWith(t))) {
+            return reply.status(400).send({ message: 'Tipo de arquivo não permitido. Use imagem, vídeo ou áudio.' });
+        }
+
+        const MAX_BYTES = 25 * 1024 * 1024; // 25MB
+        let bytes = 0;
+        data.file.on('data', (chunk: Buffer) => { bytes += chunk.length; });
+
+        try {
+            await mkdir(UPLOADS_DIR, { recursive: true });
+            const ext = extname(data.filename) || '.bin';
+            const filename = `${randomUUID()}${ext}`;
+            const filepath = `${UPLOADS_DIR}/${filename}`;
+
+            await pipeline(data.file, createWriteStream(filepath));
+
+            if (bytes > MAX_BYTES) {
+                return reply.status(400).send({ message: 'Arquivo excede o limite de 25MB' });
+            }
+
+            const url = `${env.API_URL}/uploads/${filename}`;
+            return reply.send({ url });
+        } catch {
+            return reply.status(500).send({ message: 'Erro ao salvar arquivo' });
+        }
+    },
+
+    async serveUpload(req: FastifyRequest, reply: FastifyReply) {
+        const { filename } = req.params as { filename: string };
+        if (filename.includes('..') || filename.includes('/')) {
+            return reply.status(400).send({ message: 'Inválido' });
+        }
+        const filepath = `${UPLOADS_DIR}/${filename}`;
+        try {
+            await access(filepath);
+            return reply.send(createReadStream(filepath));
+        } catch {
+            return reply.status(404).send({ message: 'Arquivo não encontrado' });
+        }
     },
 
     // ── AUTOMAÇÕES (legado) ───────────────────────

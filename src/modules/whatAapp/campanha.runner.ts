@@ -5,7 +5,6 @@ interface CampanhaJob {
     cancelled: boolean;
 }
 
-// Registry de campanhas ativas (em memória)
 const activeCampaigns = new Map<string, CampanhaJob>();
 
 function toInstanceName(userId: string): string {
@@ -26,6 +25,12 @@ async function sleepCancellable(ms: number, job: CampanhaJob): Promise<void> {
     }
 }
 
+export interface EtapaDaCampanha {
+    tipo: 'texto' | 'imagem' | 'video' | 'audio';
+    conteudo: string;
+    intervalo_antes: number; // segundos de espera antes desta etapa
+}
+
 export interface LeadDaCampanha {
     id: string;
     name: string;
@@ -37,17 +42,41 @@ export interface OpcoesCampanha {
     disparoId: string;
     userId: string;
     leads: LeadDaCampanha[];
+    // Mensagem simples (sem funil)
     mensagem: string;
-    intervaloMs: number;
+    // Etapas do funil (quando funil_id foi informado)
+    etapas?: EtapaDaCampanha[];
+    intervaloMs: number; // delay entre leads
+}
+
+async function enviarEtapa(
+    inst: string,
+    telefone: string,
+    etapa: EtapaDaCampanha,
+    lead: LeadDaCampanha,
+): Promise<boolean> {
+    const substituir = (texto: string) =>
+        texto
+            .replace(/\{nome\}/g, lead.name)
+            .replace(/\{interesse\}/g, lead.interesse ?? '');
+
+    if (etapa.tipo === 'texto') {
+        return evolutionService.sendText(inst, telefone, substituir(etapa.conteudo));
+    }
+    return evolutionService.sendMedia(inst, telefone, etapa.tipo, etapa.conteudo, '');
 }
 
 export const campanhaRunner = {
-    // Inicia a campanha em background sem bloquear a resposta HTTP
     iniciar(opts: OpcoesCampanha): void {
         const job: CampanhaJob = { cancelled: false };
         activeCampaigns.set(opts.disparoId, job);
 
         const inst = toInstanceName(opts.userId);
+
+        // Normaliza: se não tem funil, cria uma etapa de texto com a mensagem simples
+        const etapas: EtapaDaCampanha[] = opts.etapas?.length
+            ? opts.etapas
+            : [{ tipo: 'texto', conteudo: opts.mensagem, intervalo_antes: 0 }];
 
         (async () => {
             let enviados = 0;
@@ -58,56 +87,67 @@ export const campanhaRunner = {
                     if (job.cancelled) break;
 
                     const lead = opts.leads[i];
+                    let leadOk = true;
 
-                    try {
-                        const msg = opts.mensagem
-                            .replace(/\{nome\}/g, lead.name)
-                            .replace(/\{interesse\}/g, lead.interesse ?? '');
+                    // Envia cada etapa do funil em sequência para este lead
+                    for (const etapa of etapas) {
+                        if (job.cancelled) break;
 
-                        const ok = await evolutionService.sendText(inst, lead.telefone, msg);
-
-                        if (ok) {
-                            enviados++;
-                            const conversa = await whatsappRepository.findOrCreateConversa(
-                                opts.userId, lead.telefone, lead.name,
-                            );
-                            await whatsappRepository.saveMensagem({
-                                user_id: opts.userId,
-                                conversa_id: conversa.id,
-                                telefone: lead.telefone,
-                                direcao: 'enviada',
-                                conteudo: msg,
-                            });
-                            await whatsappRepository.saveDisparoLog({
-                                user_id: opts.userId,
-                                lead_id: lead.id,
-                                lead_name: lead.name,
-                                phone: lead.telefone,
-                                success: true,
-                                message_preview: msg.slice(0, 100),
-                            });
-                        } else {
-                            falhas++;
-                            await whatsappRepository.saveDisparoLog({
-                                user_id: opts.userId,
-                                lead_id: lead.id,
-                                lead_name: lead.name,
-                                phone: lead.telefone,
-                                success: false,
-                                message_preview: msg.slice(0, 100),
-                            });
+                        // Aguarda o intervalo_antes desta etapa (se > 0)
+                        if (etapa.intervalo_antes > 0) {
+                            await sleepCancellable(etapa.intervalo_antes * 1000, job);
                         }
-                    } catch {
-                        falhas++;
+
+                        if (job.cancelled) break;
+
+                        try {
+                            const ok = await enviarEtapa(inst, lead.telefone, etapa, lead);
+                            if (!ok) { leadOk = false; }
+                        } catch {
+                            leadOk = false;
+                        }
                     }
 
-                    // Persiste progresso para o frontend poder fazer polling
+                    if (leadOk) {
+                        enviados++;
+                        const conversa = await whatsappRepository.findOrCreateConversa(
+                            opts.userId, lead.telefone, lead.name,
+                        );
+                        const preview = etapas[0]?.conteudo?.slice(0, 100) ?? '';
+                        await whatsappRepository.saveMensagem({
+                            user_id: opts.userId,
+                            conversa_id: conversa.id,
+                            telefone: lead.telefone,
+                            direcao: 'enviada',
+                            conteudo: preview,
+                        });
+                        await whatsappRepository.saveDisparoLog({
+                            user_id: opts.userId,
+                            lead_id: lead.id,
+                            lead_name: lead.name,
+                            phone: lead.telefone,
+                            success: true,
+                            message_preview: preview,
+                        });
+                    } else {
+                        falhas++;
+                        await whatsappRepository.saveDisparoLog({
+                            user_id: opts.userId,
+                            lead_id: lead.id,
+                            lead_name: lead.name,
+                            phone: lead.telefone,
+                            success: false,
+                            message_preview: etapas[0]?.conteudo?.slice(0, 100) ?? '',
+                        });
+                    }
+
+                    // Persiste progresso para polling do frontend
                     await whatsappRepository.updateDisparo(opts.disparoId, opts.userId, {
                         enviados,
                         falhas,
                     });
 
-                    // Aguarda antes da próxima mensagem (exceto após a última)
+                    // Aguarda intervalo entre leads (exceto após o último)
                     if (i < opts.leads.length - 1 && !job.cancelled) {
                         const delay = randomDelay(opts.intervaloMs);
                         await sleepCancellable(delay, job);

@@ -76,6 +76,31 @@ export const disparosDiarios = pgTable('disparos_diarios', {
     index('disparos_diarios_user_data_idx').on(table.user_id, table.data),
 ]);
 
+// ── FUNIS DE DISPARO ──────────────────────────────────
+export const funis = pgTable('funis', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    nome: text('nome').notNull(),
+    descricao: text('descricao'),
+    created_at: timestamp('created_at').defaultNow(),
+    updated_at: timestamp('updated_at').defaultNow(),
+}, (table) => [
+    index('funis_user_id_idx').on(table.user_id),
+]);
+
+export const funilEtapas = pgTable('funil_etapas', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    funil_id: uuid('funil_id').notNull().references(() => funis.id, { onDelete: 'cascade' }),
+    ordem: integer('ordem').notNull().default(0),
+    tipo: text('tipo').notNull().default('texto'), // texto | imagem | video | audio
+    conteudo: text('conteudo').notNull().default(''),
+    intervalo_antes: integer('intervalo_antes').notNull().default(0),
+    created_at: timestamp('created_at').defaultNow(),
+    updated_at: timestamp('updated_at').defaultNow(),
+}, (table) => [
+    index('funil_etapas_funil_id_idx').on(table.funil_id),
+]);
+
 // ── AUTOMATION FLOWS ──────────────────────────────────
 export const automationFlows = pgTable('automation_flows', {
     id: uuid('id').primaryKey().defaultRandom(),

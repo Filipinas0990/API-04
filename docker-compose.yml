@@ -11,6 +11,8 @@ services:
     networks:
       - backend-network
     restart: unless-stopped
+    volumes:
+      - backend_uploads:/app/uploads
 
   postgres:
     image: postgres:16-alpine
@@ -29,6 +31,7 @@ services:
 
 volumes:
   backend_postgres_data:
+  backend_uploads:
 
 networks:
   backend-network:

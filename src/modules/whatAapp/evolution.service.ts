@@ -26,6 +26,32 @@ export const evolutionService = {
         }
     },
 
+    // Envia mídia (imagem, vídeo ou áudio) por URL pública
+    async sendMedia(
+        instanceName: string,
+        telefone: string,
+        tipo: 'imagem' | 'video' | 'audio',
+        mediaUrl: string,
+        caption = '',
+    ): Promise<boolean> {
+        try {
+            const mediatype = tipo === 'imagem' ? 'image' : tipo === 'video' ? 'video' : 'audio';
+            const res = await fetch(`${BASE_URL}/message/sendMedia/${instanceName}`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                    number: telefone,
+                    mediatype,
+                    caption,
+                    media: mediaUrl,
+                }),
+            });
+            return res.ok;
+        } catch {
+            return false;
+        }
+    },
+
     // Verifica status da instância
     async getStatus(instanceName: string): Promise<{ connected: boolean; instance: string }> {
         try {

@@ -2,6 +2,7 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import cookie from '@fastify/cookie';
+import multipart from '@fastify/multipart';
 import { env } from '../config/env';
 import { errorHandler } from '../middlewares/error.middleware';
 import { authRoutes } from '../modules/auth/auth.routes';
@@ -30,6 +31,7 @@ export function buildApp() {
     });
 
     app.register(helmet);
+    app.register(multipart, { limits: { fileSize: 25 * 1024 * 1024 } }); // 25MB
 
     app.register(cookie, { secret: env.REFRESH_SECRET });
     app.register(leadRoutes, { prefix: '/api/v1/leads' });

@@ -6,6 +6,9 @@ export async function whatsappRoutes(app: FastifyInstance) {
     // Webhook público
     app.post('/webhook', whatsappController.webhook);
 
+    // Serve arquivos de mídia enviados pelos corretores (sem auth — WhatsApp precisa acessar)
+    app.get('/uploads/:filename', whatsappController.serveUpload);
+
     app.register(async (protectedApp) => {
         protectedApp.addHook('preHandler', authMiddleware);
 
@@ -40,6 +43,14 @@ export async function whatsappRoutes(app: FastifyInstance) {
         protectedApp.post('/automacoes', whatsappController.createAutomacao);
         protectedApp.put('/automacoes/:id', whatsappController.updateAutomacao);
         protectedApp.delete('/automacoes/:id', whatsappController.deleteAutomacao);
+
+        // Funis de disparo
+        protectedApp.get('/funis', whatsappController.listFunis);
+        protectedApp.post('/funis', whatsappController.createFunil);
+        protectedApp.post('/funis/upload', whatsappController.uploadMidia);
+        protectedApp.get('/funis/:id', whatsappController.getFunilById);
+        protectedApp.put('/funis/:id', whatsappController.updateFunil);
+        protectedApp.delete('/funis/:id', whatsappController.deleteFunil);
 
         // Automation Flows
         protectedApp.get('/flows', whatsappController.listFlows);

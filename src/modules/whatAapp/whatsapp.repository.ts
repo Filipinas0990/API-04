@@ -2,7 +2,8 @@ import { eq, and, desc, count } from 'drizzle-orm';
 import { db } from '../../database/client';
 import {
     conversas, mensagens, disparos, disparoLogs,
-    disparosDiarios, automationFlows, automationNodes, automationSessions
+    disparosDiarios, funis, funilEtapas,
+    automationFlows, automationNodes, automationSessions
 } from './whatsapp.db.schema';
 
 export const whatsappRepository = {
@@ -138,6 +139,77 @@ export const whatsappRepository = {
         } else {
             await db.insert(disparosDiarios).values({ user_id: userId, data: hoje, quantidade });
         }
+    },
+
+    // ── FUNIS DE DISPARO ──────────────────────────
+    async listFunis(userId: string) {
+        const list = await db.select().from(funis)
+            .where(eq(funis.user_id, userId))
+            .orderBy(desc(funis.created_at));
+        return Promise.all(list.map(async (f) => {
+            const etapas = await db.select().from(funilEtapas)
+                .where(eq(funilEtapas.funil_id, f.id))
+                .orderBy(funilEtapas.ordem);
+            return { ...f, etapas };
+        }));
+    },
+
+    async findFunilById(id: string, userId: string) {
+        const result = await db.select().from(funis)
+            .where(and(eq(funis.id, id), eq(funis.user_id, userId)));
+        if (!result[0]) return null;
+        const etapas = await db.select().from(funilEtapas)
+            .where(eq(funilEtapas.funil_id, id))
+            .orderBy(funilEtapas.ordem);
+        return { ...result[0], etapas };
+    },
+
+    async createFunil(userId: string, data: {
+        nome: string;
+        descricao?: string;
+        etapas: Array<{ tipo: string; conteudo: string; ordem: number; intervalo_antes: number }>;
+    }) {
+        const [funil] = await db.insert(funis)
+            .values({ nome: data.nome, descricao: data.descricao, user_id: userId })
+            .returning();
+        const etapas = data.etapas.length
+            ? await db.insert(funilEtapas)
+                .values(data.etapas.map(e => ({ ...e, funil_id: funil.id })))
+                .returning()
+            : [];
+        return { ...funil, etapas };
+    },
+
+    async updateFunil(id: string, userId: string, data: {
+        nome: string;
+        descricao?: string;
+        etapas: Array<{ tipo: string; conteudo: string; ordem: number; intervalo_antes: number }>;
+    }) {
+        const [updated] = await db.update(funis)
+            .set({ nome: data.nome, descricao: data.descricao, updated_at: new Date() })
+            .where(and(eq(funis.id, id), eq(funis.user_id, userId)))
+            .returning();
+        if (!updated) return null;
+        await db.delete(funilEtapas).where(eq(funilEtapas.funil_id, id));
+        const etapas = data.etapas.length
+            ? await db.insert(funilEtapas)
+                .values(data.etapas.map(e => ({ ...e, funil_id: id })))
+                .returning()
+            : [];
+        return { ...updated, etapas };
+    },
+
+    async deleteFunil(id: string, userId: string) {
+        const [deleted] = await db.delete(funis)
+            .where(and(eq(funis.id, id), eq(funis.user_id, userId)))
+            .returning();
+        return deleted ?? null;
+    },
+
+    async listEtapasByFunilId(funilId: string) {
+        return db.select().from(funilEtapas)
+            .where(eq(funilEtapas.funil_id, funilId))
+            .orderBy(funilEtapas.ordem);
     },
 
     // ── AUTOMATION FLOWS ──────────────────────────
