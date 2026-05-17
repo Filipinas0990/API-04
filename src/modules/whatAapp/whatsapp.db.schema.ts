@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, boolean, integer, timestamp, jsonb, time, index } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, boolean, integer, real, timestamp, jsonb, time, index } from 'drizzle-orm/pg-core';
 import { users } from '../auth/auth.schema';
 import { leads } from '../leads/lead.db.schema';
 
@@ -135,6 +135,26 @@ export const automationNodes = pgTable('automation_nodes', {
     created_at: timestamp('created_at').defaultNow(),
 }, (table) => [
     index('nodes_flow_id_idx').on(table.flow_id),
+]);
+
+// ── IA CONFIG ─────────────────────────────────────────
+export const iaConfig = pgTable('ia_config', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    user_id: uuid('user_id').notNull().unique().references(() => users.id, { onDelete: 'cascade' }),
+    instance_name: text('instance_name').notNull(), // ex: inst-abc12345 — para lookup no webhook
+    ativo: boolean('ativo').default(false).notNull(),
+    instancias: jsonb('instancias').default([]),     // [] = todas as instâncias
+    openai_api_key: text('openai_api_key'),          // chave própria da empresa; null = usa a do .env
+    modelo: text('modelo').default('gpt-4o-mini').notNull(),
+    max_tokens: integer('max_tokens').default(500).notNull(),
+    temperatura: real('temperatura').default(0.7).notNull(),
+    prompt_sistema: text('prompt_sistema'),
+    regras: jsonb('regras').default([]),             // [{palavra_chave, novo_status, pausar_ia}]
+    created_at: timestamp('created_at').defaultNow(),
+    updated_at: timestamp('updated_at').defaultNow(),
+}, (table) => [
+    index('ia_config_user_id_idx').on(table.user_id),
+    index('ia_config_instance_idx').on(table.instance_name),
 ]);
 
 // ── AUTOMATION SESSIONS ───────────────────────────────

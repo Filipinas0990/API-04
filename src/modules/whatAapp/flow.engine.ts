@@ -1,5 +1,6 @@
 import { whatsappRepository } from './whatsapp.repository';
 import { evolutionService } from './evolution.service';
+import { iaAutoResponder } from './ia-auto-responder.service';
 
 type FlowNode = {
     id: string;
@@ -256,6 +257,12 @@ export const flowEngine = {
 
         // Sessão ativa mas não aguardando input — ignora
         if (session) return;
+
+        // ── IA auto-responder (tem prioridade sobre flows quando ativo) ───────
+        const iaHandled = await iaAutoResponder.handle(
+            instanceName, telefone, conteudo, userId, conversa.id, conversa.status ?? 'pendente',
+        );
+        if (iaHandled) return;
 
         // ── Sem sessão: procura flow ativo para disparar ─────────────────────
         const flows = await whatsappRepository.findActiveFlowsByInstance(instanceName);

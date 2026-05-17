@@ -201,6 +201,63 @@ export const whatsappController = {
         })();
     },
 
+    // ── IA CONFIG ─────────────────────────────────────
+    async getIaConfig(req: FastifyRequest, reply: FastifyReply) {
+        const config = await whatsappRepository.getIaConfigByUserId(req.user.id);
+
+        const defaults = {
+            ativo: false,
+            instancias: [],
+            modelo: 'gpt-4o-mini',
+            max_tokens: 500,
+            temperatura: 0.7,
+            prompt_sistema: null,
+            regras: [],
+        };
+
+        const result = config ?? defaults;
+
+        // Credenciais OpenAI visíveis apenas para o dono da imobiliária
+        const isOwner = req.user.role === 'owner';
+        if (!isOwner) {
+            return reply.send({ ...result, openai_api_key: undefined });
+        }
+        return reply.send(result);
+    },
+
+    async saveIaConfig(req: FastifyRequest, reply: FastifyReply) {
+        const iaConfigSchema = z.object({
+            ativo: z.boolean().optional(),
+            instancias: z.array(z.string()).optional(),
+            openai_api_key: z.string().nullable().optional(),
+            modelo: z.string().optional(),
+            max_tokens: z.number().int().min(100).max(4000).optional(),
+            temperatura: z.number().min(0).max(2).optional(),
+            prompt_sistema: z.string().nullable().optional(),
+            regras: z.array(z.object({
+                palavra_chave: z.string().min(1),
+                novo_status: z.string().min(1),
+                pausar_ia: z.boolean(),
+            })).optional(),
+        });
+
+        const data = iaConfigSchema.parse(req.body);
+
+        // Apenas o dono pode alterar a chave OpenAI
+        if (req.user.role !== 'owner') {
+            delete (data as Record<string, unknown>).openai_api_key;
+        }
+
+        const instName = instanceName(req.user.id);
+        const config = await whatsappRepository.upsertIaConfig(req.user.id, instName, data);
+
+        const isOwner = req.user.role === 'owner';
+        if (!isOwner) {
+            return reply.send({ ...config, openai_api_key: undefined });
+        }
+        return reply.send(config);
+    },
+
     // ── ASSISTENTE IA ──────────────────────────────────
     async assistente(req: FastifyRequest, reply: FastifyReply) {
         const { mensagem } = req.body as { mensagem: string };

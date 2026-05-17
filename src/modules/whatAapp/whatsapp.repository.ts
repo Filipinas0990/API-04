@@ -3,7 +3,7 @@ import { db } from '../../database/client';
 import {
     conversas, mensagens, disparos, disparoLogs,
     disparosDiarios, funis, funilEtapas,
-    automationFlows, automationNodes, automationSessions
+    automationFlows, automationNodes, automationSessions, iaConfig
 } from './whatsapp.db.schema';
 
 export const whatsappRepository = {
@@ -329,14 +329,21 @@ export const whatsappRepository = {
 
     // ── FLOW ENGINE — métodos de suporte ──────────────────────────────────────
 
-    // Descobre o user_id pelo instance_name registrado em qualquer flow
+    // Descobre o user_id pelo instance_name — tenta flows primeiro, depois ia_config
     async findUserByInstanceName(instanceName: string) {
-        const result = await db
+        const fromFlow = await db
             .select({ user_id: automationFlows.user_id })
             .from(automationFlows)
             .where(eq(automationFlows.instance_name, instanceName))
             .limit(1);
-        return result[0] ?? null;
+        if (fromFlow[0]) return fromFlow[0];
+
+        const fromIA = await db
+            .select({ user_id: iaConfig.user_id })
+            .from(iaConfig)
+            .where(eq(iaConfig.instance_name, instanceName))
+            .limit(1);
+        return fromIA[0] ?? null;
     },
 
     // Retorna todos os flows ativos de uma instância
@@ -393,6 +400,46 @@ export const whatsappRepository = {
             .where(and(eq(conversas.id, id), eq(conversas.user_id, userId)))
             .returning();
         return c ?? null;
+    },
+
+    // ── IA CONFIG ─────────────────────────────────────
+    async getIaConfigByUserId(userId: string) {
+        const result = await db.select().from(iaConfig)
+            .where(eq(iaConfig.user_id, userId));
+        return result[0] ?? null;
+    },
+
+    async getIaConfigByInstanceName(instanceName: string) {
+        const result = await db.select().from(iaConfig)
+            .where(eq(iaConfig.instance_name, instanceName));
+        return result[0] ?? null;
+    },
+
+    async upsertIaConfig(userId: string, instanceName: string, data: Partial<{
+        ativo: boolean;
+        instancias: string[];
+        openai_api_key: string | null;
+        modelo: string;
+        max_tokens: number;
+        temperatura: number;
+        prompt_sistema: string | null;
+        regras: Array<{ palavra_chave: string; novo_status: string; pausar_ia: boolean }>;
+    }>) {
+        const existing = await db.select({ id: iaConfig.id }).from(iaConfig)
+            .where(eq(iaConfig.user_id, userId));
+
+        if (existing[0]) {
+            const [updated] = await db.update(iaConfig)
+                .set({ ...data, instance_name: instanceName, updated_at: new Date() } as typeof iaConfig.$inferInsert)
+                .where(eq(iaConfig.user_id, userId))
+                .returning();
+            return updated;
+        }
+
+        const [created] = await db.insert(iaConfig)
+            .values({ ...data, user_id: userId, instance_name: instanceName } as typeof iaConfig.$inferInsert)
+            .returning();
+        return created;
     },
 
 

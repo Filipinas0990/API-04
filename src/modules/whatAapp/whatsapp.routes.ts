@@ -26,6 +26,10 @@ export async function whatsappRoutes(app: FastifyInstance) {
         // Assistente IA
         protectedApp.post('/assistente', whatsappController.assistente);
 
+        // Configuração do Assistente de IA (todos veem, mas corretor não vê credenciais)
+        protectedApp.get('/ia/config', whatsappController.getIaConfig);
+        protectedApp.post('/ia/config', whatsappController.saveIaConfig);
+
         // Disparos (legado)
         protectedApp.get('/disparos', whatsappController.listDisparos);
         protectedApp.post('/disparos', whatsappController.iniciarDisparo);
