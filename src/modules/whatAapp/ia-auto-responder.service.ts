@@ -32,7 +32,7 @@ export const iaAutoResponder = {
                 content: m.conteudo,
             }));
 
-        const apiKey = config.openai_api_key ?? env.OPENAI_API_KEY;
+        const apiKey = config.openai_api_key || env.OPENAI_API_KEY;
         const modelo = config.modelo ?? 'gpt-4o-mini';
         const maxTokens = config.max_tokens ?? 500;
         const temperatura = config.temperatura ?? 0.7;
