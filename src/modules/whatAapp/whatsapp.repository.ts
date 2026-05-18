@@ -1,10 +1,11 @@
-import { eq, and, desc, count } from 'drizzle-orm';
+import { eq, and, desc, count, sql } from 'drizzle-orm';
 import { db } from '../../database/client';
 import {
     conversas, mensagens, disparos, disparoLogs,
     disparosDiarios, funis, funilEtapas,
     automationFlows, automationNodes, automationSessions, iaConfig
 } from './whatsapp.db.schema';
+import { users } from '../auth/auth.schema';
 
 export const whatsappRepository = {
 
@@ -329,8 +330,10 @@ export const whatsappRepository = {
 
     // ── FLOW ENGINE — métodos de suporte ──────────────────────────────────────
 
-    // Descobre o user_id pelo instance_name — tenta flows primeiro, depois ia_config
+    // Descobre o user_id pelo instance_name
+    // Ordem: flows → padrão inst-{prefixo} → scan ia_config ativo
     async findUserByInstanceName(instanceName: string) {
+        // 1. Tenta por flows (compatibilidade com automações)
         const fromFlow = await db
             .select({ user_id: automationFlows.user_id })
             .from(automationFlows)
@@ -338,12 +341,32 @@ export const whatsappRepository = {
             .limit(1);
         if (fromFlow[0]) return fromFlow[0];
 
-        const fromIA = await db
-            .select({ user_id: iaConfig.user_id })
+        // 2. Padrão SaaS: inst-{primeiros 8 chars do userId}
+        //    ex: inst-dd28655c → userId começa com dd28655c
+        if (instanceName.startsWith('inst-')) {
+            const prefix = instanceName.slice(5); // remove "inst-"
+            const fromUser = await db
+                .select({ user_id: users.id })
+                .from(users)
+                .where(sql`${users.id}::text LIKE ${prefix + '%'}`)
+                .limit(1);
+            if (fromUser[0]) return { user_id: fromUser[0].user_id };
+        }
+
+        // 3. Fallback: qualquer ia_config ativo que inclua essa instância
+        const configs = await db
+            .select({ user_id: iaConfig.user_id, instancias: iaConfig.instancias })
             .from(iaConfig)
-            .where(eq(iaConfig.instance_name, instanceName))
-            .limit(1);
-        return fromIA[0] ?? null;
+            .where(eq(iaConfig.ativo, true));
+
+        for (const cfg of configs) {
+            const lista = (cfg.instancias as string[]) ?? [];
+            if (lista.length === 0 || lista.includes(instanceName)) {
+                return { user_id: cfg.user_id };
+            }
+        }
+
+        return null;
     },
 
     // Retorna todos os flows ativos de uma instância
