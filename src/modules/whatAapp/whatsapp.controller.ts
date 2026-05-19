@@ -146,7 +146,13 @@ export const whatsappController = {
         const key = data?.key as Record<string, unknown>;
         if (key?.fromMe) return reply.send({ ok: true });
 
-        const telefone = (key?.remoteJid as string)?.replace('@s.whatsapp.net', '');
+        const remoteJid = key?.remoteJid as string;
+        // Ignora grupos e status broadcast — IA só atende conversas individuais
+        if (!remoteJid || remoteJid.endsWith('@g.us') || remoteJid.endsWith('@broadcast')) {
+            return reply.send({ ok: true });
+        }
+
+        const telefone = remoteJid.replace('@s.whatsapp.net', '');
         const msgContent = data?.message as Record<string, unknown> | undefined;
         const conteudo = (msgContent?.conversation ?? msgContent?.extendedTextMessage
             ? ((msgContent?.extendedTextMessage as Record<string, unknown>)?.text ?? msgContent?.conversation)
