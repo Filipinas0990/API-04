@@ -34,9 +34,9 @@ export const iaAutoResponder = {
 
         const apiKey = config.openai_api_key || env.OPENAI_API_KEY;
         const modelo = config.modelo ?? 'gpt-4o-mini';
-        const maxTokens = config.max_tokens ?? 500;
+        const maxTokens = config.max_tokens ?? 120;
         const temperatura = config.temperatura ?? 0.7;
-        const systemPrompt = config.prompt_sistema ?? 'Você é um assistente de atendimento imobiliário. Responda de forma cordial e objetiva.';
+        const systemPrompt = config.prompt_sistema ?? 'Você é um assistente de atendimento imobiliário. Seu único objetivo é aquecer o lead e deixá-lo interessado para falar com um corretor. Responda de forma simpática e curta — máximo 2 linhas. Nunca resolva o problema do cliente sozinho.';
 
         try {
             const res = await fetch('https://api.openai.com/v1/chat/completions', {

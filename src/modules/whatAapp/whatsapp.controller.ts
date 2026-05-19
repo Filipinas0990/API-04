@@ -123,6 +123,7 @@ export const whatsappController = {
         await whatsappRepository.updateConversa(conversa.id, req.user.id, {
             ultima_msg: mensagem,
             ultima_msg_em: new Date(),
+            status: 'em_atendimento',
         });
         return reply.send({ ok, conversa_id: conversa.id });
     },
