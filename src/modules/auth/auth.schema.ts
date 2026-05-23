@@ -13,6 +13,10 @@ export const users = pgTable('users', {
     tipo_conta: text('tipo_conta').default('corretor'),      // 'corretor' | 'imobiliaria'
     role: text('role').default('owner'),                     // 'owner' | 'agent'
     organization_id: uuid('organization_id').references(() => organizations.id, { onDelete: 'set null' }),
+    // ── Assinatura ────────────────────────────────────────────────────────────
+    plano: text('plano').default('basic'),                   // 'basic' | 'premium' | 'gold'
+    plano_status: text('plano_status').default('active'),    // 'active' | 'inactive'
+    plano_expira_em: timestamp('plano_expira_em'),           // null = sem expiração
     created_at: timestamp('created_at').defaultNow(),
     updated_at: timestamp('updated_at').defaultNow(),
 });

@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { whatsappController } from './whatsapp.controller';
 import { authMiddleware } from '../../middlewares/auth.middleware';
+import { requireFeature } from '../../middlewares/plan.middleware';
 
 export async function whatsappRoutes(app: FastifyInstance) {
     // Webhook público
@@ -23,12 +24,12 @@ export async function whatsappRoutes(app: FastifyInstance) {
         protectedApp.get('/conversas/:conversaId/mensagens', whatsappController.listMensagens);
         protectedApp.post('/send', whatsappController.sendMensagem);
 
-        // Assistente IA
-        protectedApp.post('/assistente', whatsappController.assistente);
+        // Assistente IA — requer premium
+        protectedApp.post('/assistente', { preHandler: requireFeature('whatsapp-ia') }, whatsappController.assistente);
 
-        // Configuração do Assistente de IA (todos veem, mas corretor não vê credenciais)
-        protectedApp.get('/ia/config', whatsappController.getIaConfig);
-        protectedApp.post('/ia/config', whatsappController.saveIaConfig);
+        // Configuração do Assistente de IA — requer premium
+        protectedApp.get('/ia/config', { preHandler: requireFeature('whatsapp-ia') }, whatsappController.getIaConfig);
+        protectedApp.post('/ia/config', { preHandler: requireFeature('whatsapp-ia') }, whatsappController.saveIaConfig);
 
         // Disparos (legado)
         protectedApp.get('/disparos', whatsappController.listDisparos);
@@ -36,7 +37,7 @@ export async function whatsappRoutes(app: FastifyInstance) {
         protectedApp.get('/disparos/limite', whatsappController.getLimiteDiario);
         protectedApp.get('/disparos/logs', whatsappController.listDisparoLogs);
 
-        // Campanhas (novo — com intervalo anti-ban e execução em background)
+        // Campanhas
         protectedApp.get('/campanhas', whatsappController.listDisparos);
         protectedApp.post('/campanhas', whatsappController.iniciarCampanha);
         protectedApp.get('/campanhas/:id/progresso', whatsappController.getProgresso);

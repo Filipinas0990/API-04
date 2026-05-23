@@ -153,6 +153,7 @@ export const whatsappController = {
             return reply.send({ ok: true });
         }
 
+        const wamId = key?.id as string | undefined;
         const telefone = remoteJid.replace('@s.whatsapp.net', '');
         const msgContent = data?.message as Record<string, unknown> | undefined;
         const conteudo = (msgContent?.conversation ?? msgContent?.extendedTextMessage
@@ -168,6 +169,8 @@ export const whatsappController = {
         // ── Verifica se é resposta a lembrete de visita ──────────────────────
         (async () => {
             try {
+                // Deduplicação: ignora mensagem já processada
+                if (wamId && await whatsappRepository.existsMensagemByWamId(wamId)) return;
                 const visita = await visitaRepository.findPendingLembreteByPhone(telefone);
                 if (visita) {
                     const resp = conteudo.trim().toLowerCase();
@@ -204,7 +207,7 @@ export const whatsappController = {
             }
 
             // ── Processa flow de automação normalmente ───────────────────────
-            flowEngine.processIncomingMessage(instanceName, telefone, conteudo).catch(console.error);
+            flowEngine.processIncomingMessage(instanceName, telefone, conteudo, wamId).catch(console.error);
         })();
     },
 

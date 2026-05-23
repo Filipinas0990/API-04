@@ -69,6 +69,14 @@ export const whatsappRepository = {
             .offset(offset);
     },
 
+    async existsMensagemByWamId(wamId: string): Promise<boolean> {
+        const result = await db.select({ id: mensagens.id })
+            .from(mensagens)
+            .where(eq(mensagens.wam_id, wamId))
+            .limit(1);
+        return result.length > 0;
+    },
+
     // ── DISPAROS ──────────────────────────────────
     async createDisparo(userId: string, data: Record<string, unknown>) {
         const [d] = await db.insert(disparos)

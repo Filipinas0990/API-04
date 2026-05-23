@@ -110,42 +110,56 @@ export const campanhaRunner = {
 
                     if (leadOk) {
                         enviados++;
-                        const conversa = await whatsappRepository.findOrCreateConversa(
-                            opts.userId, lead.telefone, lead.name,
-                        );
-                        const preview = etapas[0]?.conteudo?.slice(0, 100) ?? '';
-                        await whatsappRepository.saveMensagem({
-                            user_id: opts.userId,
-                            conversa_id: conversa.id,
-                            telefone: lead.telefone,
-                            direcao: 'enviada',
-                            conteudo: preview,
-                        });
-                        await whatsappRepository.saveDisparoLog({
-                            user_id: opts.userId,
-                            lead_id: lead.id,
-                            lead_name: lead.name,
-                            phone: lead.telefone,
-                            success: true,
-                            message_preview: preview,
-                        });
+                        try {
+                            const conversa = await whatsappRepository.findOrCreateConversa(
+                                opts.userId, lead.telefone, lead.name,
+                            );
+                            const preview = etapas[0]?.conteudo?.slice(0, 100) ?? '';
+                            if (conversa?.id) {
+                                await whatsappRepository.saveMensagem({
+                                    user_id: opts.userId,
+                                    conversa_id: conversa.id,
+                                    telefone: lead.telefone,
+                                    direcao: 'enviada',
+                                    conteudo: preview || ' ',
+                                });
+                            }
+                            await whatsappRepository.saveDisparoLog({
+                                user_id: opts.userId,
+                                lead_id: lead.id,
+                                lead_name: lead.name,
+                                phone: lead.telefone,
+                                success: true,
+                                message_preview: preview,
+                            });
+                        } catch (dbErr) {
+                            console.error(`[campanha] Erro ao salvar log do lead ${lead.id}:`, dbErr);
+                        }
                     } else {
                         falhas++;
-                        await whatsappRepository.saveDisparoLog({
-                            user_id: opts.userId,
-                            lead_id: lead.id,
-                            lead_name: lead.name,
-                            phone: lead.telefone,
-                            success: false,
-                            message_preview: etapas[0]?.conteudo?.slice(0, 100) ?? '',
-                        });
+                        try {
+                            await whatsappRepository.saveDisparoLog({
+                                user_id: opts.userId,
+                                lead_id: lead.id,
+                                lead_name: lead.name,
+                                phone: lead.telefone,
+                                success: false,
+                                message_preview: etapas[0]?.conteudo?.slice(0, 100) ?? '',
+                            });
+                        } catch (dbErr) {
+                            console.error(`[campanha] Erro ao salvar log de falha do lead ${lead.id}:`, dbErr);
+                        }
                     }
 
                     // Persiste progresso para polling do frontend
-                    await whatsappRepository.updateDisparo(opts.disparoId, opts.userId, {
-                        enviados,
-                        falhas,
-                    });
+                    try {
+                        await whatsappRepository.updateDisparo(opts.disparoId, opts.userId, {
+                            enviados,
+                            falhas,
+                        });
+                    } catch (dbErr) {
+                        console.error(`[campanha] Erro ao atualizar progresso:`, dbErr);
+                    }
 
                     // Aguarda intervalo entre leads (exceto após o último)
                     if (i < opts.leads.length - 1 && !job.cancelled) {
@@ -156,12 +170,20 @@ export const campanhaRunner = {
             } finally {
                 activeCampaigns.delete(opts.disparoId);
                 const status = job.cancelled ? 'cancelado' : 'concluido';
-                await whatsappRepository.incrementarLimiteDiario(opts.userId, enviados);
-                await whatsappRepository.updateDisparo(opts.disparoId, opts.userId, {
-                    enviados,
-                    falhas,
-                    status,
-                });
+                try {
+                    await whatsappRepository.incrementarLimiteDiario(opts.userId, enviados);
+                } catch (dbErr) {
+                    console.error(`[campanha] Erro ao incrementar limite diário:`, dbErr);
+                }
+                try {
+                    await whatsappRepository.updateDisparo(opts.disparoId, opts.userId, {
+                        enviados,
+                        falhas,
+                        status,
+                    });
+                } catch (dbErr) {
+                    console.error(`[campanha] Erro ao finalizar campanha no DB:`, dbErr);
+                }
             }
         })().catch(err => {
             console.error(`[campanha] Erro fatal na campanha ${opts.disparoId}:`, err);

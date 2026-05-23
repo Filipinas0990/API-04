@@ -22,6 +22,11 @@ export const authRepository = {
         return result[0] ?? null;
     },
 
+    async findAdmin() {
+        const result = await db.select({ id: users.id }).from(users).where(eq(users.tipo_conta, 'admin')).limit(1);
+        return result[0] ?? null;
+    },
+
     async findById(id: string) {
         const result = await db.select(publicUserFields).from(users).where(eq(users.id, id));
         return result[0] ?? null;

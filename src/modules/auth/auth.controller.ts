@@ -254,6 +254,38 @@ export const authController = {
         return reply.send(user);
     },
 
+    async registerAdmin(req: FastifyRequest, reply: FastifyReply) {
+        const data = z.object({
+            name: z.string().min(2),
+            email: z.string().email(),
+            password: z.string().min(8),
+        }).parse(req.body);
+
+        const adminExistente = await authRepository.findAdmin();
+        if (adminExistente) {
+            return reply.status(409).send({ statusCode: 409, error: 'Conflict', message: 'Já existe um administrador cadastrado no sistema.' });
+        }
+
+        const existing = await authRepository.findByEmail(data.email);
+        if (existing) {
+            return reply.status(409).send({ statusCode: 409, error: 'Conflict', message: 'Email já cadastrado' });
+        }
+
+        const user = await authRepository.create({
+            name: data.name,
+            email: data.email,
+            password: await bcrypt.hash(data.password, 12),
+            tipo_conta: 'admin',
+            role: 'owner',
+            organization_id: undefined,
+        });
+
+        return reply.status(201).send({
+            message: 'Conta admin criada com sucesso.',
+            user: { id: user.id, name: user.name, email: user.email, tipo_conta: user.tipo_conta },
+        });
+    },
+
     async resetPassword(req: FastifyRequest, reply: FastifyReply) {
         const { email, new_password } = z.object({
             email: z.string().email(),

@@ -227,7 +227,7 @@ async function resumeSession(
 }
 
 export const flowEngine = {
-    async processIncomingMessage(instanceName: string, telefone: string, conteudo: string): Promise<void> {
+    async processIncomingMessage(instanceName: string, telefone: string, conteudo: string, wamId?: string): Promise<void> {
         // Descobre o user_id pela instance_name registrada nos flows
         const userInfo = await whatsappRepository.findUserByInstanceName(instanceName);
         if (!userInfo) return;
@@ -237,7 +237,7 @@ export const flowEngine = {
         const conversa = await whatsappRepository.findOrCreateConversa(userId, telefone);
         await whatsappRepository.saveMensagem({
             user_id: userId, conversa_id: conversa.id,
-            telefone, direcao: 'recebida', conteudo,
+            telefone, direcao: 'recebida', conteudo, wam_id: wamId,
         });
         await whatsappRepository.updateConversaById(conversa.id, userId, {
             ultima_msg: conteudo,

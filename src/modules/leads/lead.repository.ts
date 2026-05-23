@@ -31,6 +31,12 @@ export const leadRepository = {
         return allLeads;
     },
 
+    async findByPhone(userId: string, telefone: string) {
+        const result = await db.select().from(leads)
+            .where(and(eq(leads.user_id, userId), eq(leads.telefone, telefone)));
+        return result[0] ?? null;
+    },
+
     // Buscar lead por ID (garante que pertence ao usuário)
     async findById(id: string, userId: string) {
         const result = await db
