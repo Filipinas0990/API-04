@@ -22,6 +22,11 @@ export const authRepository = {
         return result[0] ?? null;
     },
 
+    async findByPhone(phone: string) {
+        const result = await db.select(publicUserFields).from(users).where(eq(users.phone, phone));
+        return result[0] ?? null;
+    },
+
     async findAdmin() {
         const result = await db.select({ id: users.id }).from(users).where(eq(users.tipo_conta, 'admin')).limit(1);
         return result[0] ?? null;

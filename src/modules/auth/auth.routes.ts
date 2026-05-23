@@ -15,4 +15,5 @@ export async function authRoutes(app: FastifyInstance) {
 
     app.get('/me', { preHandler: authMiddleware }, authController.me);
     app.put('/me', { preHandler: authMiddleware }, authController.updateMe);
+    app.get('/assistente/config', { preHandler: authMiddleware }, authController.getAssistenteConfig);
 }

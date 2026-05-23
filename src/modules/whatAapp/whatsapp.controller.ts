@@ -71,6 +71,70 @@ function instanceName(userId: string): string {
     return `inst-${userId.split('-')[0]}`;
 }
 
+function normalizarTelefone(tel: string): string {
+    // Remove tudo que não for dígito
+    const digitos = tel.replace(/\D/g, '');
+    // Remove DDI 55 se vier com ele (WhatsApp manda com 55)
+    if (digitos.startsWith('55') && digitos.length >= 12) {
+        return digitos.slice(2);
+    }
+    return digitos;
+}
+
+async function handleFilipeAssistente(instancia: string, telefone: string, conteudo: string) {
+    const { authRepository } = await import('../auth/auth.repository');
+
+    // Normaliza o telefone que veio do WhatsApp e busca variações
+    const telNormalizado = normalizarTelefone(telefone);
+    const telComDDI = `55${telNormalizado}`;
+
+    let user = await authRepository.findByPhone(telNormalizado);
+    if (!user) user = await authRepository.findByPhone(telComDDI);
+    if (!user) user = await authRepository.findByPhone(telefone);
+
+    if (!user) {
+        await evolutionService.sendText(instancia, telefone,
+            '❌ Seu número não está cadastrado no sistema.\n\n' +
+            'Para usar o assistente, acesse o sistema e cadastre seu número em *Configurações > Assistente IA*.');
+        return;
+    }
+
+    const intencao = await assistenteService.processar(conteudo);
+
+    if (intencao.acao === 'registrar_lead') {
+        const dados = intencao.dados as { name?: string; telefone?: string; interesse?: string; temperatura?: number };
+        if (dados.name && dados.telefone) {
+            await leadRepository.create(user.id, {
+                name: dados.name,
+                telefone: dados.telefone,
+                interesse: dados.interesse,
+                temperatura: dados.temperatura ?? 1,
+            });
+        }
+    } else if (intencao.acao === 'registrar_venda') {
+        const dados = intencao.dados as { valor?: number; status?: string; observacoes?: string };
+        if (dados.valor) {
+            await vendaRepository.create(user.id, {
+                valor: dados.valor,
+                status: dados.status ?? 'Em negociação',
+                observacoes: dados.observacoes,
+            });
+        }
+    } else if (intencao.acao === 'registrar_imovel') {
+        const dados = intencao.dados as { titulo?: string; tipo?: string; preco?: number; cidade?: string };
+        if (dados.titulo) {
+            await imovelRepository.create(user.id, {
+                titulo: dados.titulo,
+                tipo: dados.tipo,
+                preco: dados.preco,
+                cidade: dados.cidade,
+            });
+        }
+    }
+
+    await evolutionService.sendText(instancia, telefone, intencao.resposta);
+}
+
 export const whatsappController = {
     // ── STATUS ──────────────────────────────────
     async getStatus(req: FastifyRequest, reply: FastifyReply) {
@@ -162,6 +226,13 @@ export const whatsappController = {
         const instanceName = body?.instance as string;
 
         if (!telefone || !instanceName) return reply.send({ ok: true });
+
+        // ── Instância do Filipe — roteamento para o assistente ────────────────
+        if (env.FILIPE_INSTANCE && instanceName === env.FILIPE_INSTANCE) {
+            reply.send({ ok: true });
+            handleFilipeAssistente(instanceName, telefone, conteudo).catch(console.error);
+            return;
+        }
 
         // Responde imediatamente à Evolution API e processa em background
         reply.send({ ok: true });

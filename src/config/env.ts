@@ -27,6 +27,9 @@ const envSchema = z.object({
     EVOLUTION_INSTANCE: z.string().optional(),
     OPENAI_API_KEY: z.string().min(1),
 
+    FILIPE_INSTANCE: z.string().optional(),
+    FILIPE_PHONE: z.string().optional(),
+
     ADMIN_SECRET: z.string().min(16, 'ADMIN_SECRET deve ter ao menos 16 caracteres'),
     WEBHOOK_SECRET: z.string().min(8).optional(),
     API_URL: z.string().url().default('http://localhost:3000'),

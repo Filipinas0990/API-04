@@ -286,6 +286,16 @@ export const authController = {
         });
     },
 
+    async getAssistenteConfig(req: FastifyRequest, reply: FastifyReply) {
+        const { env } = await import('../../config/env');
+        const user = await authRepository.findById(req.user.id);
+        return reply.send({
+            filipe_phone: env.FILIPE_PHONE ?? null,
+            meu_phone: user?.phone ?? null,
+            configurado: !!user?.phone,
+        });
+    },
+
     async resetPassword(req: FastifyRequest, reply: FastifyReply) {
         const { email, new_password } = z.object({
             email: z.string().email(),
