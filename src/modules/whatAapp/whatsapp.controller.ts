@@ -8,6 +8,7 @@ import { extname } from 'path';
 import { whatsappRepository } from './whatsapp.repository';
 import { evolutionService } from './evolution.service';
 import { assistenteService } from './assistente.service';
+import { enfileirarFilipe } from './filipe.queue';
 import { flowEngine } from './flow.engine';
 import { campanhaRunner } from './campanha.runner';
 import { env } from '../../config/env';
@@ -72,19 +73,81 @@ function instanceName(userId: string): string {
 }
 
 function normalizarTelefone(tel: string): string {
-    // Remove tudo que não for dígito
     const digitos = tel.replace(/\D/g, '');
-    // Remove DDI 55 se vier com ele (WhatsApp manda com 55)
     if (digitos.startsWith('55') && digitos.length >= 12) {
         return digitos.slice(2);
     }
     return digitos;
 }
 
+// ── Rate limiting — exclusivo do Filipe ─────────────────────────────────────
+const RATE_LIMIT_MAX = 10;        // máximo de mensagens por janela
+const RATE_LIMIT_JANELA_MS = 60_000; // janela de 1 minuto
+
+const filipeRateLimit = new Map<string, number[]>();
+
+function verificarRateLimit(telefone: string): boolean {
+    const agora = Date.now();
+    const timestamps = (filipeRateLimit.get(telefone) ?? [])
+        .filter(t => agora - t < RATE_LIMIT_JANELA_MS);
+
+    if (timestamps.length >= RATE_LIMIT_MAX) return false;
+
+    timestamps.push(agora);
+    filipeRateLimit.set(telefone, timestamps);
+    return true;
+}
+
+// ── Histórico de conversa in-memory — exclusivo do Filipe ───────────────────
+const HISTORICO_MAX_TROCAS = 5;   // últimas 5 trocas (user + assistant)
+const HISTORICO_TTL_MS = 30 * 60_000; // expira em 30 min de inatividade
+
+interface EntradaHistorico {
+    msgs: Array<{ role: 'user' | 'assistant'; content: string }>;
+    expireAt: number;
+}
+
+const filipeHistorico = new Map<string, EntradaHistorico>();
+
+function getHistorico(telefone: string): Array<{ role: 'user' | 'assistant'; content: string }> {
+    const entrada = filipeHistorico.get(telefone);
+    if (!entrada || Date.now() > entrada.expireAt) {
+        filipeHistorico.delete(telefone);
+        return [];
+    }
+    return entrada.msgs;
+}
+
+function salvarHistorico(
+    telefone: string,
+    mensagemUsuario: string,
+    respostaAssistente: string,
+) {
+    const msgs = getHistorico(telefone);
+    msgs.push({ role: 'user', content: mensagemUsuario });
+    msgs.push({ role: 'assistant', content: respostaAssistente });
+
+    // Mantém apenas as últimas N trocas (2 mensagens por troca)
+    const limite = HISTORICO_MAX_TROCAS * 2;
+    const cortado = msgs.length > limite ? msgs.slice(msgs.length - limite) : msgs;
+
+    filipeHistorico.set(telefone, {
+        msgs: cortado,
+        expireAt: Date.now() + HISTORICO_TTL_MS,
+    });
+}
+
+// ── Handler principal do Filipe ─────────────────────────────────────────────
 async function handleFilipeAssistente(instancia: string, telefone: string, conteudo: string) {
+    // Rate limit por número de telefone
+    if (!verificarRateLimit(telefone)) {
+        await evolutionService.sendText(instancia, telefone,
+            '⏳ Muitas mensagens em pouco tempo. Aguarde um momento e tente novamente.');
+        return;
+    }
+
     const { authRepository } = await import('../auth/auth.repository');
 
-    // Normaliza o telefone que veio do WhatsApp e busca variações
     const telNormalizado = normalizarTelefone(telefone);
     const telComDDI = `55${telNormalizado}`;
 
@@ -99,7 +162,10 @@ async function handleFilipeAssistente(instancia: string, telefone: string, conte
         return;
     }
 
-    const intencao = await assistenteService.processar(conteudo);
+    // Recupera histórico da conversa atual
+    const historico = getHistorico(telefone);
+
+    const intencao = await assistenteService.processar(conteudo, historico);
 
     if (intencao.acao === 'registrar_lead') {
         const dados = intencao.dados as { name?: string; telefone?: string; interesse?: string; temperatura?: number };
@@ -131,6 +197,9 @@ async function handleFilipeAssistente(instancia: string, telefone: string, conte
             });
         }
     }
+
+    // Salva a troca no histórico para contexto das próximas mensagens
+    salvarHistorico(telefone, conteudo, intencao.resposta);
 
     await evolutionService.sendText(instancia, telefone, intencao.resposta);
 }
@@ -230,7 +299,16 @@ export const whatsappController = {
         // ── Instância do Filipe — roteamento para o assistente ────────────────
         if (env.FILIPE_INSTANCE && instanceName === env.FILIPE_INSTANCE) {
             reply.send({ ok: true });
-            handleFilipeAssistente(instanceName, telefone, conteudo).catch(console.error);
+            // Tenta enfileirar; se Redis não estiver disponível, processa direto
+            enfileirarFilipe({ instancia: instanceName, telefone, conteudo })
+                .then(enfileirado => {
+                    if (!enfileirado) {
+                        handleFilipeAssistente(instanceName, telefone, conteudo).catch(console.error);
+                    }
+                })
+                .catch(() => {
+                    handleFilipeAssistente(instanceName, telefone, conteudo).catch(console.error);
+                });
             return;
         }
 
@@ -786,3 +864,6 @@ export const whatsappController = {
         return reply.status(response.status).send(text);
     },
 };
+
+// Exportado para uso pelo worker BullMQ em filipe.queue.ts / main.ts
+export { handleFilipeAssistente as handleFilipeAssistenteExterno };

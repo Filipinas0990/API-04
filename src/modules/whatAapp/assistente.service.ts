@@ -11,10 +11,18 @@ interface IntencaoIA {
     resposta: string;
 }
 
-export const assistenteService = {
-    async processar(mensagem: string, historico: MensagemIA[] = []): Promise<IntencaoIA> {
-        try {
-            const systemPrompt = `Você é um assistente de CRM imobiliário. 
+const FALLBACK: IntencaoIA = {
+    acao: 'desconhecido',
+    dados: {},
+    resposta: 'Desculpe, não consegui processar agora. Tente novamente em instantes.',
+};
+
+async function sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function chamarOpenAI(mensagem: string, historico: MensagemIA[]): Promise<IntencaoIA> {
+    const systemPrompt = `Você é um assistente de CRM imobiliário.
 Quando um corretor enviar uma mensagem, identifique a intenção e extraia os dados.
 
 Responda SEMPRE em JSON com este formato:
@@ -30,35 +38,60 @@ Para registrar_imovel, extraia: titulo, tipo, preco, cidade, endereco
 Para consultar, retorne apenas a resposta
 Para desconhecido, peça mais informações`;
 
-            const res = await fetch('https://api.openai.com/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${env.OPENAI_API_KEY}`,
-                },
-                body: JSON.stringify({
-                    model: 'gpt-4o-mini',
-                    messages: [
-                        { role: 'system', content: systemPrompt },
-                        ...historico,
-                        { role: 'user', content: mensagem },
-                    ],
-                    response_format: { type: 'json_object' },
-                    max_tokens: 500,
-                }),
-            });
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${env.OPENAI_API_KEY}`,
+        },
+        body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: [
+                { role: 'system', content: systemPrompt },
+                ...historico,
+                { role: 'user', content: mensagem },
+            ],
+            response_format: { type: 'json_object' },
+            max_tokens: 500,
+        }),
+    });
 
-            const data = await res.json() as {
-                choices?: Array<{ message?: { content?: string } }>;
-            };
-            const content = data?.choices?.[0]?.message?.content ?? '{}';
-            return JSON.parse(content) as IntencaoIA;
-        } catch {
-            return {
-                acao: 'desconhecido',
-                dados: {},
-                resposta: 'Desculpe, não entendi. Pode reformular?',
-            };
+    if (!res.ok) {
+        const err = new Error(`OpenAI HTTP ${res.status}`);
+        (err as NodeJS.ErrnoException).code = String(res.status);
+        throw err;
+    }
+
+    const data = await res.json() as {
+        choices?: Array<{ message?: { content?: string } }>;
+    };
+    const content = data?.choices?.[0]?.message?.content ?? '{}';
+    return JSON.parse(content) as IntencaoIA;
+}
+
+export const assistenteService = {
+    async processar(mensagem: string, historico: MensagemIA[] = []): Promise<IntencaoIA> {
+        const MAX_TENTATIVAS = 3;
+        const DELAYS_MS = [1000, 2000, 4000];
+
+        for (let tentativa = 0; tentativa < MAX_TENTATIVAS; tentativa++) {
+            try {
+                return await chamarOpenAI(mensagem, historico);
+            } catch (err) {
+                const status = (err as NodeJS.ErrnoException).code;
+                const isRetryable = status === '429' || (Number(status) >= 500);
+                const isUltimaTentativa = tentativa === MAX_TENTATIVAS - 1;
+
+                if (!isRetryable || isUltimaTentativa) {
+                    console.error(`[Filipe] OpenAI erro após ${tentativa + 1} tentativa(s):`, err);
+                    return FALLBACK;
+                }
+
+                console.warn(`[Filipe] OpenAI erro ${status}, tentativa ${tentativa + 1}/${MAX_TENTATIVAS}. Aguardando ${DELAYS_MS[tentativa]}ms...`);
+                await sleep(DELAYS_MS[tentativa]);
+            }
         }
+
+        return FALLBACK;
     },
 };

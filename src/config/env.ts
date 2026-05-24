@@ -29,6 +29,7 @@ const envSchema = z.object({
 
     FILIPE_INSTANCE: z.string().optional(),
     FILIPE_PHONE: z.string().optional(),
+    REDIS_URL: z.string().optional(),
 
     ADMIN_SECRET: z.string().min(16, 'ADMIN_SECRET deve ter ao menos 16 caracteres'),
     WEBHOOK_SECRET: z.string().min(8).optional(),
