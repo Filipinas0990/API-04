@@ -1,9 +1,14 @@
-import { eq, and, ilike, or } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { db } from '../../database/client';
 import { leads } from './lead.db.schema';
+import { etiquetaRepository } from '../etiquetas/etiqueta.repository';
+
+async function withEtiquetas<T extends { id: string }>(items: T[]) {
+    const map = await etiquetaRepository.fetchForLeads(items.map(i => i.id));
+    return items.map(item => ({ ...item, etiquetas: map.get(item.id) ?? [] }));
+}
 
 export const leadRepository = {
-    // Listar todos os leads do usuário (com filtros opcionais)
     async findAll(userId: string, filters?: { search?: string; status?: string }) {
         const conditions = [eq(leads.user_id, userId)];
 
@@ -17,36 +22,39 @@ export const leadRepository = {
             .where(and(...conditions))
             .orderBy(leads.created_at);
 
-        // Filtro de busca em memória (nome ou telefone)
-        if (filters?.search) {
-            const search = filters.search.toLowerCase();
-            return allLeads.filter(
-                l =>
-                    l.name.toLowerCase().includes(search) ||
-                    l.telefone.includes(search) ||
-                    (l.email?.toLowerCase().includes(search) ?? false)
-            );
-        }
+        const filtered = filters?.search
+            ? (() => {
+                const search = filters.search!.toLowerCase();
+                return allLeads.filter(
+                    l =>
+                        l.name.toLowerCase().includes(search) ||
+                        l.telefone.includes(search) ||
+                        (l.email?.toLowerCase().includes(search) ?? false),
+                );
+            })()
+            : allLeads;
 
-        return allLeads;
+        return withEtiquetas(filtered);
     },
 
     async findByPhone(userId: string, telefone: string) {
-        const result = await db.select().from(leads)
+        const result = await db
+            .select()
+            .from(leads)
             .where(and(eq(leads.user_id, userId), eq(leads.telefone, telefone)));
         return result[0] ?? null;
     },
 
-    // Buscar lead por ID (garante que pertence ao usuário)
     async findById(id: string, userId: string) {
         const result = await db
             .select()
             .from(leads)
             .where(and(eq(leads.id, id), eq(leads.user_id, userId)));
-        return result[0] ?? null;
+        if (!result[0]) return null;
+        const [enriched] = await withEtiquetas([result[0]]);
+        return enriched;
     },
 
-    // Criar lead
     async create(userId: string, data: {
         name: string;
         telefone: string;
@@ -64,7 +72,6 @@ export const leadRepository = {
         return lead;
     },
 
-    // Atualizar lead
     async update(id: string, userId: string, data: Partial<{
         name: string;
         telefone: string;
@@ -83,7 +90,6 @@ export const leadRepository = {
         return lead ?? null;
     },
 
-    // Deletar lead
     async delete(id: string, userId: string) {
         const [lead] = await db
             .delete(leads)
@@ -92,7 +98,6 @@ export const leadRepository = {
         return lead ?? null;
     },
 
-    // Leads filtrados por etapa do kanban (status) — usado pelos disparos de campanha
     async findByKanbanEtapa(userId: string, etapa: string) {
         return db
             .select()
@@ -101,7 +106,6 @@ export const leadRepository = {
             .orderBy(leads.created_at);
     },
 
-    // Pipeline: leads agrupados por status
     async getPipeline(userId: string) {
         const allLeads = await db
             .select()
@@ -109,12 +113,14 @@ export const leadRepository = {
             .where(eq(leads.user_id, userId))
             .orderBy(leads.created_at);
 
+        const enriched = await withEtiquetas(allLeads);
+
         return {
-            novo_cliente: allLeads.filter(l => l.status === 'novo_cliente'),
-            em_contato: allLeads.filter(l => l.status === 'em_contato'),
-            visita_marcada: allLeads.filter(l => l.status === 'visita_marcada'),
-            proposta_enviada: allLeads.filter(l => l.status === 'proposta_enviada'),
-            cliente_desistiu: allLeads.filter(l => l.status === 'cliente_desistiu'),
+            novo_cliente: enriched.filter(l => l.status === 'novo_cliente'),
+            em_contato: enriched.filter(l => l.status === 'em_contato'),
+            visita_marcada: enriched.filter(l => l.status === 'visita_marcada'),
+            proposta_enviada: enriched.filter(l => l.status === 'proposta_enviada'),
+            cliente_desistiu: enriched.filter(l => l.status === 'cliente_desistiu'),
         };
     },
 };

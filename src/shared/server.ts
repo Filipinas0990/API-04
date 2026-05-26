@@ -16,6 +16,7 @@ import { whatsappRoutes } from '../modules/whatAapp/whatsapp.routes';
 import { orgRoutes } from '../modules/org/org.routes';
 import { adminRoutes } from '../modules/admin/admin.routes';
 import { subscriptionRoutes } from '../modules/subscription/subscription.routes';
+import { etiquetasRoutes } from '../modules/etiquetas/etiqueta.routes';
 
 
 
@@ -46,6 +47,7 @@ export function buildApp() {
     app.register(orgRoutes, { prefix: '/api/v1/org' });
     app.register(adminRoutes, { prefix: '/api/v1/admin' });
     app.register(subscriptionRoutes, { prefix: '/api/v1' });
+    app.register(etiquetasRoutes, { prefix: '/api/v1/etiquetas' });
 
 
 

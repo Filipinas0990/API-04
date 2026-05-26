@@ -1,6 +1,7 @@
 import { whatsappRepository } from './whatsapp.repository';
 import { evolutionService } from './evolution.service';
 import { leadRepository } from '../leads/lead.repository';
+import { etiquetaRepository } from '../etiquetas/etiqueta.repository';
 import { env } from '../../config/env';
 
 type Regra = { palavra_chave: string; novo_status: string; pausar_ia: boolean };
@@ -211,6 +212,24 @@ export const iaAutoResponder = {
                     }
                 }
             }
+
+            // Auto-tag por keyword: aplica etiquetas cujo keyword_trigger está contido na mensagem
+            void (async () => {
+                try {
+                    const tagsComKeyword = await etiquetaRepository.findWithKeywords(userId);
+                    if (tagsComKeyword.length === 0) return;
+                    const lead = await leadRepository.findByPhone(userId, telefone);
+                    if (!lead) return;
+                    const msgLower = conteudo.toLowerCase();
+                    for (const tag of tagsComKeyword) {
+                        if (tag.keyword_trigger && msgLower.includes(tag.keyword_trigger.toLowerCase())) {
+                            await etiquetaRepository.addToLead(lead.id, tag.id);
+                        }
+                    }
+                } catch (err) {
+                    console.error('[auto-tag] Erro ao aplicar etiqueta por keyword:', err);
+                }
+            })();
 
             return true;
         } catch (err) {

@@ -64,6 +64,13 @@
       "when": 1779414120347,
       "tag": "0008_add_plano_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1748304000000,
+      "tag": "0009_etiquetas",
+      "breakpoints": true
     }
   ]
 }

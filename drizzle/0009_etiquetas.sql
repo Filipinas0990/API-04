@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS "etiquetas" (
     "created_at" timestamp DEFAULT now(),
     "updated_at" timestamp DEFAULT now()
 );
-
+--> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "lead_etiquetas" (
     "lead_id" uuid NOT NULL REFERENCES "leads"("id") ON DELETE CASCADE,
     "etiqueta_id" uuid NOT NULL REFERENCES "etiquetas"("id") ON DELETE CASCADE,

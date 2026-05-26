@@ -7,3 +7,4 @@ export * from '../modules/tarefas/tarefa.db.schema';
 export * from '../modules/visitas/visita.db.schema';
 export * from '../modules/fluxo-caixa/fluxo.db.schema';
 export * from '../modules/whatAapp/whatsapp.db.schema';
+export * from '../modules/etiquetas/etiqueta.db.schema';
