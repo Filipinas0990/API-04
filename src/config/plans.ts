@@ -10,6 +10,7 @@ export type Feature =
     | 'relatorios'
     | 'whatsapp'
     | 'whatsapp-ia'
+    | 'assistente-filipe'
     | 'automacoes'
     | 'campanhas';
 
@@ -25,7 +26,7 @@ export const PLAN_FEATURES: Record<Plano, Feature[]> = {
         'whatsapp',
         'automacoes',
         'campanhas',
-        // Única feature bloqueada no basic: 'whatsapp-ia'
+        // Bloqueadas no basic: 'whatsapp-ia', 'assistente-filipe'
     ],
     premium: [
         'leads',
@@ -37,6 +38,7 @@ export const PLAN_FEATURES: Record<Plano, Feature[]> = {
         'relatorios',
         'whatsapp',
         'whatsapp-ia',
+        'assistente-filipe',
         'automacoes',
         'campanhas',
     ],
@@ -50,9 +52,9 @@ export const PLAN_FEATURES: Record<Plano, Feature[]> = {
         'relatorios',
         'whatsapp',
         'whatsapp-ia',
+        'assistente-filipe',
         'automacoes',
         'campanhas',
-        // Gold: novas features serão adicionadas aqui quando definidas
     ],
 };
 
@@ -66,6 +68,7 @@ export const ALL_FEATURES: Feature[] = [
     'relatorios',
     'whatsapp',
     'whatsapp-ia',
+    'assistente-filipe',
     'automacoes',
     'campanhas',
 ];

@@ -9,6 +9,9 @@ export declare const orgRepository: {
         email: string | null;
         phone: string | null;
         logo_url: string | null;
+        plano: string | null;
+        plano_status: string | null;
+        plano_expira_em: Date | null;
         created_at: Date | null;
         updated_at: Date | null;
     }>;
@@ -18,6 +21,9 @@ export declare const orgRepository: {
         email: string | null;
         phone: string | null;
         logo_url: string | null;
+        plano: string | null;
+        plano_status: string | null;
+        plano_expira_em: Date | null;
         created_at: Date | null;
         updated_at: Date | null;
     }>;
@@ -32,6 +38,9 @@ export declare const orgRepository: {
         email: string | null;
         phone: string | null;
         logo_url: string | null;
+        plano: string | null;
+        plano_status: string | null;
+        plano_expira_em: Date | null;
         created_at: Date | null;
         updated_at: Date | null;
     }>;

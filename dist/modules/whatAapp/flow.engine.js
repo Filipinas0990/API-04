@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.flowEngine = void 0;
 const whatsapp_repository_1 = require("./whatsapp.repository");
 const evolution_service_1 = require("./evolution.service");
+const ia_auto_responder_service_1 = require("./ia-auto-responder.service");
 const MAX_DELAY_MS = 30_000;
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, Math.min(ms, MAX_DELAY_MS)));
@@ -45,10 +46,9 @@ async function executeNode(sessionId, node, userId, instanceName, telefone, conv
     // ── START ────────────────────────────────────────────────────────────────
     if (type === 'start') {
         if (node.message) {
-            const delayMs = (node.delay_seconds ?? 0) * 1000;
             if (delayMs > 0)
                 await sleep(delayMs);
-            await evolution_service_1.evolutionService.sendText(telefone, node.message);
+            await evolution_service_1.evolutionService.sendText(instanceName, telefone, node.message);
             await whatsapp_repository_1.whatsappRepository.saveMensagem({
                 user_id: userId, conversa_id: conversaId,
                 telefone, direcao: 'enviada', conteudo: node.message,
@@ -68,7 +68,7 @@ async function executeNode(sessionId, node, userId, instanceName, telefone, conv
         if (delayMs > 0)
             await sleep(delayMs);
         if (node.message) {
-            await evolution_service_1.evolutionService.sendText(telefone, node.message);
+            await evolution_service_1.evolutionService.sendText(instanceName, telefone, node.message);
             await whatsapp_repository_1.whatsappRepository.saveMensagem({
                 user_id: userId, conversa_id: conversaId,
                 telefone, direcao: 'enviada', conteudo: node.message,
@@ -88,7 +88,7 @@ async function executeNode(sessionId, node, userId, instanceName, telefone, conv
         if (delayMs > 0)
             await sleep(delayMs);
         if (node.message) {
-            await evolution_service_1.evolutionService.sendText(telefone, node.message);
+            await evolution_service_1.evolutionService.sendText(instanceName, telefone, node.message);
             await whatsapp_repository_1.whatsappRepository.saveMensagem({
                 user_id: userId, conversa_id: conversaId,
                 telefone, direcao: 'enviada', conteudo: node.message,
@@ -110,7 +110,7 @@ async function executeNode(sessionId, node, userId, instanceName, telefone, conv
         const optLines = options.map((o, i) => `${i + 1}. ${o.label}`).join('\n');
         const text = node.message ? `${node.message}\n\n${optLines}` : optLines;
         if (text.trim()) {
-            await evolution_service_1.evolutionService.sendText(telefone, text);
+            await evolution_service_1.evolutionService.sendText(instanceName, telefone, text);
             await whatsapp_repository_1.whatsappRepository.saveMensagem({
                 user_id: userId, conversa_id: conversaId,
                 telefone, direcao: 'enviada', conteudo: text,
@@ -127,7 +127,7 @@ async function executeNode(sessionId, node, userId, instanceName, telefone, conv
         if (delayMs > 0)
             await sleep(delayMs);
         if (node.message) {
-            await evolution_service_1.evolutionService.sendText(telefone, node.message);
+            await evolution_service_1.evolutionService.sendText(instanceName, telefone, node.message);
             await whatsapp_repository_1.whatsappRepository.saveMensagem({
                 user_id: userId, conversa_id: conversaId,
                 telefone, direcao: 'enviada', conteudo: node.message,
@@ -143,7 +143,7 @@ async function executeNode(sessionId, node, userId, instanceName, telefone, conv
         if (delayMs > 0)
             await sleep(delayMs);
         if (node.message) {
-            await evolution_service_1.evolutionService.sendText(telefone, node.message);
+            await evolution_service_1.evolutionService.sendText(instanceName, telefone, node.message);
             await whatsapp_repository_1.whatsappRepository.saveMensagem({
                 user_id: userId, conversa_id: conversaId,
                 telefone, direcao: 'enviada', conteudo: node.message,
@@ -186,7 +186,7 @@ async function resumeSession(sessionId, currentNode, conteudo, userId, instanceN
     await executeNode(sessionId, nextNode, userId, instanceName, telefone, conversaId);
 }
 exports.flowEngine = {
-    async processIncomingMessage(instanceName, telefone, conteudo) {
+    async processIncomingMessage(instanceName, telefone, conteudo, wamId) {
         // Descobre o user_id pela instance_name registrada nos flows
         const userInfo = await whatsapp_repository_1.whatsappRepository.findUserByInstanceName(instanceName);
         if (!userInfo)
@@ -196,7 +196,7 @@ exports.flowEngine = {
         const conversa = await whatsapp_repository_1.whatsappRepository.findOrCreateConversa(userId, telefone);
         await whatsapp_repository_1.whatsappRepository.saveMensagem({
             user_id: userId, conversa_id: conversa.id,
-            telefone, direcao: 'recebida', conteudo,
+            telefone, direcao: 'recebida', conteudo, wam_id: wamId,
         });
         await whatsapp_repository_1.whatsappRepository.updateConversaById(conversa.id, userId, {
             ultima_msg: conteudo,
@@ -213,6 +213,10 @@ exports.flowEngine = {
         }
         // Sessão ativa mas não aguardando input — ignora
         if (session)
+            return;
+        // ── IA auto-responder (tem prioridade sobre flows quando ativo) ───────
+        const iaHandled = await ia_auto_responder_service_1.iaAutoResponder.handle(instanceName, telefone, conteudo, userId, conversa.id, conversa.status ?? 'pendente');
+        if (iaHandled)
             return;
         // ── Sem sessão: procura flow ativo para disparar ─────────────────────
         const flows = await whatsapp_repository_1.whatsappRepository.findActiveFlowsByInstance(instanceName);

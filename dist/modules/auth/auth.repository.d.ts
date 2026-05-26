@@ -10,8 +10,27 @@ export declare const authRepository: {
         tipo_conta: string | null;
         role: string | null;
         organization_id: string | null;
+        plano: string | null;
+        plano_status: string | null;
+        plano_expira_em: Date | null;
         created_at: Date | null;
         updated_at: Date | null;
+    }>;
+    findByPhone(phone: string): Promise<{
+        id: string;
+        name: string;
+        email: string;
+        phone: string | null;
+        creci: string | null;
+        avatar_url: string | null;
+        role: string | null;
+        tipo_conta: string | null;
+        organization_id: string | null;
+        created_at: Date | null;
+        updated_at: Date | null;
+    }>;
+    findAdmin(): Promise<{
+        id: string;
     }>;
     findById(id: string): Promise<{
         id: string;

@@ -60,7 +60,7 @@ exports.visitaRepository = {
     // ── LEMBRETES AUTOMÁTICOS ────────────────────────────────────────────────
     // Visitas nas próximas 23h–25h com telefone cadastrado e sem lembrete enviado
     async findVisitasParaLembrete() {
-        return client_1.db.select().from(visita_db_schema_1.visitas).where((0, drizzle_orm_1.and)((0, drizzle_orm_1.sql) `${visita_db_schema_1.visitas.data} BETWEEN NOW() + INTERVAL '23 hours' AND NOW() + INTERVAL '25 hours'`, (0, drizzle_orm_1.isNull)(visita_db_schema_1.visitas.lembrete_enviado_at), (0, drizzle_orm_1.isNotNull)(visita_db_schema_1.visitas.telefone_cliente)));
+        return client_1.db.select().from(visita_db_schema_1.visitas).where((0, drizzle_orm_1.and)((0, drizzle_orm_1.sql) `${visita_db_schema_1.visitas.data} BETWEEN NOW() + INTERVAL '22 hours' AND NOW() + INTERVAL '23 hours'`, (0, drizzle_orm_1.isNull)(visita_db_schema_1.visitas.lembrete_enviado_at), (0, drizzle_orm_1.isNotNull)(visita_db_schema_1.visitas.telefone_cliente)));
     },
     // Lembrete enviado há +12h, sem confirmação, sem tarefa criada, visita ainda no futuro
     async findNaoConfirmadasSemTarefa() {

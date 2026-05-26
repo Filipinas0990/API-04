@@ -21,7 +21,8 @@ function iniciarJobLembretes() {
                     dateStyle: 'short',
                     timeStyle: 'short',
                 });
-                await evolution_service_1.evolutionService.sendText(v.telefone_cliente, `Olá ${v.nome_cliente ?? 'tudo bem'}! 👋\n\n` +
+                const instName = `inst-${v.user_id.split('-')[0]}`;
+                await evolution_service_1.evolutionService.sendText(instName, v.telefone_cliente, `Olá ${v.nome_cliente ?? 'tudo bem'}! 👋\n\n` +
                     `Lembrando que você tem uma visita agendada para *${dataFormatada}*.\n\n` +
                     `Você confirma sua presença?\n*1 - Sim, confirmo ✅*\n*2 - Não poderei ir ❌*`);
                 await visita_repository_1.visitaRepository.marcarLembreteEnviado(v.id);

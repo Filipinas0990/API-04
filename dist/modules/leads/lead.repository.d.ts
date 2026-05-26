@@ -16,6 +16,20 @@ export declare const leadRepository: {
         created_at: Date | null;
         updated_at: Date | null;
     }[]>;
+    findByPhone(userId: string, telefone: string): Promise<{
+        id: string;
+        user_id: string;
+        name: string;
+        telefone: string;
+        email: string | null;
+        gestor_responsavel: string | null;
+        temperatura: number | null;
+        interesse: string | null;
+        observacoes: string | null;
+        status: string | null;
+        created_at: Date | null;
+        updated_at: Date | null;
+    }>;
     findById(id: string, userId: string): Promise<{
         id: string;
         user_id: string;
@@ -90,6 +104,20 @@ export declare const leadRepository: {
         interesse: string | null;
         observacoes: string | null;
     }>;
+    findByKanbanEtapa(userId: string, etapa: string): Promise<{
+        id: string;
+        user_id: string;
+        name: string;
+        telefone: string;
+        email: string | null;
+        gestor_responsavel: string | null;
+        temperatura: number | null;
+        interesse: string | null;
+        observacoes: string | null;
+        status: string | null;
+        created_at: Date | null;
+        updated_at: Date | null;
+    }[]>;
     getPipeline(userId: string): Promise<{
         novo_cliente: {
             id: string;

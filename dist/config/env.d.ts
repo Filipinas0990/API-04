@@ -9,10 +9,14 @@ export declare const env: {
     FRONTEND_URL: string;
     EVOLUTION_API_URL: string;
     EVOLUTION_API_KEY: string;
-    EVOLUTION_INSTANCE: string;
     OPENAI_API_KEY: string;
     ADMIN_SECRET: string;
+    API_URL: string;
     TEST_DATABASE_URL?: string | undefined;
+    EVOLUTION_INSTANCE?: string | undefined;
+    FILIPE_INSTANCE?: string | undefined;
+    FILIPE_PHONE?: string | undefined;
+    REDIS_URL?: string | undefined;
     WEBHOOK_SECRET?: string | undefined;
 };
 //# sourceMappingURL=env.d.ts.map

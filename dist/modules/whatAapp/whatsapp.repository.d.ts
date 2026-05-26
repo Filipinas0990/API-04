@@ -65,6 +65,7 @@ export declare const whatsappRepository: {
         wam_id: string | null;
         created_at: Date | null;
     }[]>;
+    existsMensagemByWamId(wamId: string): Promise<boolean>;
     createDisparo(userId: string, data: Record<string, unknown>): Promise<{
         id: string;
         created_at: Date | null;
@@ -77,6 +78,9 @@ export declare const whatsappRepository: {
         enviados: number | null;
         falhas: number | null;
         leads_ids: unknown;
+        kanban_etapa: string | null;
+        funil_id: string | null;
+        intervalo_segundos: number | null;
     }>;
     updateDisparo(id: string, userId: string, data: Record<string, unknown>): Promise<{
         id: string;
@@ -88,6 +92,25 @@ export declare const whatsappRepository: {
         falhas: number | null;
         status: string | null;
         leads_ids: unknown;
+        kanban_etapa: string | null;
+        funil_id: string | null;
+        intervalo_segundos: number | null;
+        created_at: Date | null;
+        updated_at: Date | null;
+    }>;
+    findDisparoById(id: string, userId: string): Promise<{
+        id: string;
+        user_id: string;
+        mensagem: string;
+        template: string | null;
+        total: number | null;
+        enviados: number | null;
+        falhas: number | null;
+        status: string | null;
+        leads_ids: unknown;
+        kanban_etapa: string | null;
+        funil_id: string | null;
+        intervalo_segundos: number | null;
         created_at: Date | null;
         updated_at: Date | null;
     }>;
@@ -101,6 +124,9 @@ export declare const whatsappRepository: {
         falhas: number | null;
         status: string | null;
         leads_ids: unknown;
+        kanban_etapa: string | null;
+        funil_id: string | null;
+        intervalo_segundos: number | null;
         created_at: Date | null;
         updated_at: Date | null;
     }[]>;
@@ -137,6 +163,114 @@ export declare const whatsappRepository: {
         restante: number;
     }>;
     incrementarLimiteDiario(userId: string, quantidade: number): Promise<void>;
+    listFunis(userId: string): Promise<{
+        etapas: {
+            id: string;
+            funil_id: string;
+            ordem: number;
+            tipo: string;
+            conteudo: string;
+            intervalo_antes: number;
+            created_at: Date | null;
+            updated_at: Date | null;
+        }[];
+        id: string;
+        user_id: string;
+        nome: string;
+        descricao: string | null;
+        created_at: Date | null;
+        updated_at: Date | null;
+    }[]>;
+    findFunilById(id: string, userId: string): Promise<{
+        etapas: {
+            id: string;
+            funil_id: string;
+            ordem: number;
+            tipo: string;
+            conteudo: string;
+            intervalo_antes: number;
+            created_at: Date | null;
+            updated_at: Date | null;
+        }[];
+        id: string;
+        user_id: string;
+        nome: string;
+        descricao: string | null;
+        created_at: Date | null;
+        updated_at: Date | null;
+    } | null>;
+    createFunil(userId: string, data: {
+        nome: string;
+        descricao?: string;
+        etapas: Array<{
+            tipo: string;
+            conteudo: string;
+            ordem: number;
+            intervalo_antes: number;
+        }>;
+    }): Promise<{
+        etapas: {
+            id: string;
+            created_at: Date | null;
+            updated_at: Date | null;
+            tipo: string;
+            conteudo: string;
+            funil_id: string;
+            ordem: number;
+            intervalo_antes: number;
+        }[];
+        id: string;
+        created_at: Date | null;
+        updated_at: Date | null;
+        user_id: string;
+        descricao: string | null;
+        nome: string;
+    }>;
+    updateFunil(id: string, userId: string, data: {
+        nome: string;
+        descricao?: string;
+        etapas: Array<{
+            tipo: string;
+            conteudo: string;
+            ordem: number;
+            intervalo_antes: number;
+        }>;
+    }): Promise<{
+        etapas: {
+            id: string;
+            created_at: Date | null;
+            updated_at: Date | null;
+            tipo: string;
+            conteudo: string;
+            funil_id: string;
+            ordem: number;
+            intervalo_antes: number;
+        }[];
+        id: string;
+        user_id: string;
+        nome: string;
+        descricao: string | null;
+        created_at: Date | null;
+        updated_at: Date | null;
+    } | null>;
+    deleteFunil(id: string, userId: string): Promise<{
+        id: string;
+        created_at: Date | null;
+        updated_at: Date | null;
+        user_id: string;
+        descricao: string | null;
+        nome: string;
+    }>;
+    listEtapasByFunilId(funilId: string): Promise<{
+        id: string;
+        funil_id: string;
+        ordem: number;
+        tipo: string;
+        conteudo: string;
+        intervalo_antes: number;
+        created_at: Date | null;
+        updated_at: Date | null;
+    }[]>;
     listFlows(userId: string): Promise<{
         id: string;
         user_id: string;
@@ -348,7 +482,7 @@ export declare const whatsappRepository: {
     }>;
     findUserByInstanceName(instanceName: string): Promise<{
         user_id: string;
-    }>;
+    } | null>;
     findActiveFlowsByInstance(instanceName: string): Promise<{
         id: string;
         user_id: string;
@@ -403,6 +537,64 @@ export declare const whatsappRepository: {
         ultima_msg_em: Date | null;
         created_at: Date | null;
         updated_at: Date | null;
+    }>;
+    getIaConfigByUserId(userId: string): Promise<{
+        id: string;
+        user_id: string;
+        instance_name: string;
+        ativo: boolean;
+        instancias: unknown;
+        openai_api_key: string | null;
+        modelo: string;
+        max_tokens: number;
+        temperatura: number;
+        prompt_sistema: string | null;
+        regras: unknown;
+        created_at: Date | null;
+        updated_at: Date | null;
+    }>;
+    getIaConfigByInstanceName(instanceName: string): Promise<{
+        id: string;
+        user_id: string;
+        instance_name: string;
+        ativo: boolean;
+        instancias: unknown;
+        openai_api_key: string | null;
+        modelo: string;
+        max_tokens: number;
+        temperatura: number;
+        prompt_sistema: string | null;
+        regras: unknown;
+        created_at: Date | null;
+        updated_at: Date | null;
+    }>;
+    upsertIaConfig(userId: string, instanceName: string, data: Partial<{
+        ativo: boolean;
+        instancias: string[];
+        openai_api_key: string | null;
+        modelo: string;
+        max_tokens: number;
+        temperatura: number;
+        prompt_sistema: string | null;
+        regras: Array<{
+            palavra_chave: string;
+            novo_status: string;
+            pausar_ia: boolean;
+        }>;
+    }>): Promise<{
+        id: string;
+        created_at: Date | null;
+        updated_at: Date | null;
+        user_id: string;
+        temperatura: number;
+        instance_name: string;
+        ativo: boolean;
+        instancias: unknown;
+        openai_api_key: string | null;
+        modelo: string;
+        max_tokens: number;
+        prompt_sistema: string | null;
+        regras: unknown;
     }>;
 };
 //# sourceMappingURL=whatsapp.repository.d.ts.map

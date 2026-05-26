@@ -1,16 +1,29 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
+declare function handleFilipeAssistente(instancia: string, telefone: string, conteudo: string): Promise<void>;
 export declare const whatsappController: {
-    getStatus(_req: FastifyRequest, reply: FastifyReply): Promise<never>;
+    getStatus(req: FastifyRequest, reply: FastifyReply): Promise<never>;
     listConversas(req: FastifyRequest, reply: FastifyReply): Promise<never>;
     updateConversa(req: FastifyRequest, reply: FastifyReply): Promise<never>;
     listMensagens(req: FastifyRequest, reply: FastifyReply): Promise<never>;
     sendMensagem(req: FastifyRequest, reply: FastifyReply): Promise<never>;
     webhook(req: FastifyRequest, reply: FastifyReply): Promise<undefined>;
+    getIaConfig(req: FastifyRequest, reply: FastifyReply): Promise<never>;
+    saveIaConfig(req: FastifyRequest, reply: FastifyReply): Promise<never>;
     assistente(req: FastifyRequest, reply: FastifyReply): Promise<never>;
     getLimiteDiario(req: FastifyRequest, reply: FastifyReply): Promise<never>;
     listDisparos(req: FastifyRequest, reply: FastifyReply): Promise<never>;
     listDisparoLogs(req: FastifyRequest, reply: FastifyReply): Promise<never>;
     iniciarDisparo(req: FastifyRequest, reply: FastifyReply): Promise<never>;
+    iniciarCampanha(req: FastifyRequest, reply: FastifyReply): Promise<never>;
+    getProgresso(req: FastifyRequest, reply: FastifyReply): Promise<never>;
+    cancelarCampanha(req: FastifyRequest, reply: FastifyReply): Promise<never>;
+    listFunis(req: FastifyRequest, reply: FastifyReply): Promise<never>;
+    getFunilById(req: FastifyRequest, reply: FastifyReply): Promise<never>;
+    createFunil(req: FastifyRequest, reply: FastifyReply): Promise<never>;
+    updateFunil(req: FastifyRequest, reply: FastifyReply): Promise<never>;
+    deleteFunil(req: FastifyRequest, reply: FastifyReply): Promise<never>;
+    uploadMidia(req: FastifyRequest, reply: FastifyReply): Promise<never>;
+    serveUpload(req: FastifyRequest, reply: FastifyReply): Promise<never>;
     listAutomacoes(req: FastifyRequest, reply: FastifyReply): Promise<never>;
     createAutomacao(req: FastifyRequest, reply: FastifyReply): Promise<never>;
     updateAutomacao(req: FastifyRequest, reply: FastifyReply): Promise<never>;
@@ -24,6 +37,8 @@ export declare const whatsappController: {
     createNode(req: FastifyRequest, reply: FastifyReply): Promise<never>;
     updateNode(req: FastifyRequest, reply: FastifyReply): Promise<never>;
     deleteNode(req: FastifyRequest, reply: FastifyReply): Promise<never>;
+    createInstance(req: FastifyRequest, reply: FastifyReply): Promise<never>;
     evolutionProxy(req: FastifyRequest, reply: FastifyReply): Promise<never>;
 };
+export { handleFilipeAssistente as handleFilipeAssistenteExterno };
 //# sourceMappingURL=whatsapp.controller.d.ts.map

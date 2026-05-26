@@ -4,6 +4,7 @@ exports.whatsappRepository = void 0;
 const drizzle_orm_1 = require("drizzle-orm");
 const client_1 = require("../../database/client");
 const whatsapp_db_schema_1 = require("./whatsapp.db.schema");
+const auth_schema_1 = require("../auth/auth.schema");
 exports.whatsappRepository = {
     // ── CONVERSAS ──────────────────────────────────
     async findOrCreateConversa(userId, telefone, nome) {
@@ -52,6 +53,13 @@ exports.whatsappRepository = {
             .limit(limit)
             .offset(offset);
     },
+    async existsMensagemByWamId(wamId) {
+        const result = await client_1.db.select({ id: whatsapp_db_schema_1.mensagens.id })
+            .from(whatsapp_db_schema_1.mensagens)
+            .where((0, drizzle_orm_1.eq)(whatsapp_db_schema_1.mensagens.wam_id, wamId))
+            .limit(1);
+        return result.length > 0;
+    },
     // ── DISPAROS ──────────────────────────────────
     async createDisparo(userId, data) {
         const [d] = await client_1.db.insert(whatsapp_db_schema_1.disparos)
@@ -65,6 +73,11 @@ exports.whatsappRepository = {
             .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(whatsapp_db_schema_1.disparos.id, id), (0, drizzle_orm_1.eq)(whatsapp_db_schema_1.disparos.user_id, userId)))
             .returning();
         return d ?? null;
+    },
+    async findDisparoById(id, userId) {
+        const result = await client_1.db.select().from(whatsapp_db_schema_1.disparos)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(whatsapp_db_schema_1.disparos.id, id), (0, drizzle_orm_1.eq)(whatsapp_db_schema_1.disparos.user_id, userId)));
+        return result[0] ?? null;
     },
     async listDisparos(userId, limit = 50, offset = 0) {
         return client_1.db.select().from(whatsapp_db_schema_1.disparos)
@@ -105,6 +118,65 @@ exports.whatsappRepository = {
         else {
             await client_1.db.insert(whatsapp_db_schema_1.disparosDiarios).values({ user_id: userId, data: hoje, quantidade });
         }
+    },
+    // ── FUNIS DE DISPARO ──────────────────────────
+    async listFunis(userId) {
+        const list = await client_1.db.select().from(whatsapp_db_schema_1.funis)
+            .where((0, drizzle_orm_1.eq)(whatsapp_db_schema_1.funis.user_id, userId))
+            .orderBy((0, drizzle_orm_1.desc)(whatsapp_db_schema_1.funis.created_at));
+        return Promise.all(list.map(async (f) => {
+            const etapas = await client_1.db.select().from(whatsapp_db_schema_1.funilEtapas)
+                .where((0, drizzle_orm_1.eq)(whatsapp_db_schema_1.funilEtapas.funil_id, f.id))
+                .orderBy(whatsapp_db_schema_1.funilEtapas.ordem);
+            return { ...f, etapas };
+        }));
+    },
+    async findFunilById(id, userId) {
+        const result = await client_1.db.select().from(whatsapp_db_schema_1.funis)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(whatsapp_db_schema_1.funis.id, id), (0, drizzle_orm_1.eq)(whatsapp_db_schema_1.funis.user_id, userId)));
+        if (!result[0])
+            return null;
+        const etapas = await client_1.db.select().from(whatsapp_db_schema_1.funilEtapas)
+            .where((0, drizzle_orm_1.eq)(whatsapp_db_schema_1.funilEtapas.funil_id, id))
+            .orderBy(whatsapp_db_schema_1.funilEtapas.ordem);
+        return { ...result[0], etapas };
+    },
+    async createFunil(userId, data) {
+        const [funil] = await client_1.db.insert(whatsapp_db_schema_1.funis)
+            .values({ nome: data.nome, descricao: data.descricao, user_id: userId })
+            .returning();
+        const etapas = data.etapas.length
+            ? await client_1.db.insert(whatsapp_db_schema_1.funilEtapas)
+                .values(data.etapas.map(e => ({ ...e, funil_id: funil.id })))
+                .returning()
+            : [];
+        return { ...funil, etapas };
+    },
+    async updateFunil(id, userId, data) {
+        const [updated] = await client_1.db.update(whatsapp_db_schema_1.funis)
+            .set({ nome: data.nome, descricao: data.descricao, updated_at: new Date() })
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(whatsapp_db_schema_1.funis.id, id), (0, drizzle_orm_1.eq)(whatsapp_db_schema_1.funis.user_id, userId)))
+            .returning();
+        if (!updated)
+            return null;
+        await client_1.db.delete(whatsapp_db_schema_1.funilEtapas).where((0, drizzle_orm_1.eq)(whatsapp_db_schema_1.funilEtapas.funil_id, id));
+        const etapas = data.etapas.length
+            ? await client_1.db.insert(whatsapp_db_schema_1.funilEtapas)
+                .values(data.etapas.map(e => ({ ...e, funil_id: id })))
+                .returning()
+            : [];
+        return { ...updated, etapas };
+    },
+    async deleteFunil(id, userId) {
+        const [deleted] = await client_1.db.delete(whatsapp_db_schema_1.funis)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(whatsapp_db_schema_1.funis.id, id), (0, drizzle_orm_1.eq)(whatsapp_db_schema_1.funis.user_id, userId)))
+            .returning();
+        return deleted ?? null;
+    },
+    async listEtapasByFunilId(funilId) {
+        return client_1.db.select().from(whatsapp_db_schema_1.funilEtapas)
+            .where((0, drizzle_orm_1.eq)(whatsapp_db_schema_1.funilEtapas.funil_id, funilId))
+            .orderBy(whatsapp_db_schema_1.funilEtapas.ordem);
     },
     // ── AUTOMATION FLOWS ──────────────────────────
     async listFlows(userId) {
@@ -203,14 +275,41 @@ exports.whatsappRepository = {
         return this.deleteFlow(id, userId);
     },
     // ── FLOW ENGINE — métodos de suporte ──────────────────────────────────────
-    // Descobre o user_id pelo instance_name registrado em qualquer flow
+    // Descobre o user_id pelo instance_name
+    // Ordem: flows → padrão inst-{prefixo} → scan ia_config ativo
     async findUserByInstanceName(instanceName) {
-        const result = await client_1.db
+        // 1. Tenta por flows (compatibilidade com automações)
+        const fromFlow = await client_1.db
             .select({ user_id: whatsapp_db_schema_1.automationFlows.user_id })
             .from(whatsapp_db_schema_1.automationFlows)
             .where((0, drizzle_orm_1.eq)(whatsapp_db_schema_1.automationFlows.instance_name, instanceName))
             .limit(1);
-        return result[0] ?? null;
+        if (fromFlow[0])
+            return fromFlow[0];
+        // 2. Padrão SaaS: inst-{primeiros 8 chars do userId}
+        //    ex: inst-dd28655c → userId começa com dd28655c
+        if (instanceName.startsWith('inst-')) {
+            const prefix = instanceName.slice(5); // remove "inst-"
+            const fromUser = await client_1.db
+                .select({ user_id: auth_schema_1.users.id })
+                .from(auth_schema_1.users)
+                .where((0, drizzle_orm_1.sql) `${auth_schema_1.users.id}::text LIKE ${prefix + '%'}`)
+                .limit(1);
+            if (fromUser[0])
+                return { user_id: fromUser[0].user_id };
+        }
+        // 3. Fallback: qualquer ia_config ativo que inclua essa instância
+        const configs = await client_1.db
+            .select({ user_id: whatsapp_db_schema_1.iaConfig.user_id, instancias: whatsapp_db_schema_1.iaConfig.instancias })
+            .from(whatsapp_db_schema_1.iaConfig)
+            .where((0, drizzle_orm_1.eq)(whatsapp_db_schema_1.iaConfig.ativo, true));
+        for (const cfg of configs) {
+            const lista = cfg.instancias ?? [];
+            if (lista.length === 0 || lista.includes(instanceName)) {
+                return { user_id: cfg.user_id };
+            }
+        }
+        return null;
     },
     // Retorna todos os flows ativos de uma instância
     async findActiveFlowsByInstance(instanceName) {
@@ -251,6 +350,32 @@ exports.whatsappRepository = {
             .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(whatsapp_db_schema_1.conversas.id, id), (0, drizzle_orm_1.eq)(whatsapp_db_schema_1.conversas.user_id, userId)))
             .returning();
         return c ?? null;
+    },
+    // ── IA CONFIG ─────────────────────────────────────
+    async getIaConfigByUserId(userId) {
+        const result = await client_1.db.select().from(whatsapp_db_schema_1.iaConfig)
+            .where((0, drizzle_orm_1.eq)(whatsapp_db_schema_1.iaConfig.user_id, userId));
+        return result[0] ?? null;
+    },
+    async getIaConfigByInstanceName(instanceName) {
+        const result = await client_1.db.select().from(whatsapp_db_schema_1.iaConfig)
+            .where((0, drizzle_orm_1.eq)(whatsapp_db_schema_1.iaConfig.instance_name, instanceName));
+        return result[0] ?? null;
+    },
+    async upsertIaConfig(userId, instanceName, data) {
+        const existing = await client_1.db.select({ id: whatsapp_db_schema_1.iaConfig.id }).from(whatsapp_db_schema_1.iaConfig)
+            .where((0, drizzle_orm_1.eq)(whatsapp_db_schema_1.iaConfig.user_id, userId));
+        if (existing[0]) {
+            const [updated] = await client_1.db.update(whatsapp_db_schema_1.iaConfig)
+                .set({ ...data, instance_name: instanceName, updated_at: new Date() })
+                .where((0, drizzle_orm_1.eq)(whatsapp_db_schema_1.iaConfig.user_id, userId))
+                .returning();
+            return updated;
+        }
+        const [created] = await client_1.db.insert(whatsapp_db_schema_1.iaConfig)
+            .values({ ...data, user_id: userId, instance_name: instanceName })
+            .returning();
+        return created;
     },
 };
 //# sourceMappingURL=whatsapp.repository.js.map

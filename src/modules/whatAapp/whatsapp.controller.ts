@@ -162,6 +162,16 @@ async function handleFilipeAssistente(instancia: string, telefone: string, conte
         return;
     }
 
+    // Verifica se o plano do corretor inclui o assistente
+    const { hasFeature } = await import('../../config/plans');
+    const plano = (user as { plano?: string }).plano ?? 'basic';
+    if (!hasFeature(plano as 'basic' | 'premium' | 'gold', 'assistente-filipe')) {
+        await evolutionService.sendText(instancia, telefone,
+            '🔒 O Assistente Filipe está disponível apenas nos planos *Premium* e *Gold*.\n\n' +
+            'Fale com seu administrador para fazer o upgrade.');
+        return;
+    }
+
     // Recupera histórico da conversa atual
     const historico = getHistorico(telefone);
 

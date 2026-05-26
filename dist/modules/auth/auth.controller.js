@@ -1,4 +1,37 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -202,6 +235,42 @@ exports.authController = {
         const data = updateSchema.parse(req.body);
         const user = await auth_repository_1.authRepository.update(req.user.id, data);
         return reply.send(user);
+    },
+    async registerAdmin(req, reply) {
+        const data = zod_1.z.object({
+            name: zod_1.z.string().min(2),
+            email: zod_1.z.string().email(),
+            password: zod_1.z.string().min(8),
+        }).parse(req.body);
+        const adminExistente = await auth_repository_1.authRepository.findAdmin();
+        if (adminExistente) {
+            return reply.status(409).send({ statusCode: 409, error: 'Conflict', message: 'Já existe um administrador cadastrado no sistema.' });
+        }
+        const existing = await auth_repository_1.authRepository.findByEmail(data.email);
+        if (existing) {
+            return reply.status(409).send({ statusCode: 409, error: 'Conflict', message: 'Email já cadastrado' });
+        }
+        const user = await auth_repository_1.authRepository.create({
+            name: data.name,
+            email: data.email,
+            password: await bcryptjs_1.default.hash(data.password, 12),
+            tipo_conta: 'admin',
+            role: 'owner',
+            organization_id: undefined,
+        });
+        return reply.status(201).send({
+            message: 'Conta admin criada com sucesso.',
+            user: { id: user.id, name: user.name, email: user.email, tipo_conta: user.tipo_conta },
+        });
+    },
+    async getAssistenteConfig(req, reply) {
+        const { env } = await Promise.resolve().then(() => __importStar(require('../../config/env')));
+        const user = await auth_repository_1.authRepository.findById(req.user.id);
+        return reply.send({
+            filipe_phone: env.FILIPE_PHONE ?? null,
+            meu_phone: user?.phone ?? null,
+            configurado: !!user?.phone,
+        });
     },
     async resetPassword(req, reply) {
         const { email, new_password } = zod_1.z.object({

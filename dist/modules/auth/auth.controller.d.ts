@@ -7,6 +7,8 @@ export declare const authController: {
     logout(req: FastifyRequest, reply: FastifyReply): Promise<never>;
     me(req: FastifyRequest, reply: FastifyReply): Promise<never>;
     updateMe(req: FastifyRequest, reply: FastifyReply): Promise<never>;
+    registerAdmin(req: FastifyRequest, reply: FastifyReply): Promise<never>;
+    getAssistenteConfig(req: FastifyRequest, reply: FastifyReply): Promise<never>;
     resetPassword(req: FastifyRequest, reply: FastifyReply): Promise<never>;
 };
 //# sourceMappingURL=auth.controller.d.ts.map

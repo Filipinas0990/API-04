@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { authController } from './auth.controller';
 import { authMiddleware, adminMiddleware } from '../../middlewares/auth.middleware';
+import { requireFeature } from '../../middlewares/plan.middleware';
 
 export async function authRoutes(app: FastifyInstance) {
 
@@ -15,5 +16,5 @@ export async function authRoutes(app: FastifyInstance) {
 
     app.get('/me', { preHandler: authMiddleware }, authController.me);
     app.put('/me', { preHandler: authMiddleware }, authController.updateMe);
-    app.get('/assistente/config', { preHandler: authMiddleware }, authController.getAssistenteConfig);
+    app.get('/assistente/config', { preHandler: [authMiddleware, requireFeature('assistente-filipe')] }, authController.getAssistenteConfig);
 }

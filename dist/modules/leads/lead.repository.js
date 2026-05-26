@@ -25,6 +25,11 @@ exports.leadRepository = {
         }
         return allLeads;
     },
+    async findByPhone(userId, telefone) {
+        const result = await client_1.db.select().from(lead_db_schema_1.leads)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(lead_db_schema_1.leads.user_id, userId), (0, drizzle_orm_1.eq)(lead_db_schema_1.leads.telefone, telefone)));
+        return result[0] ?? null;
+    },
     // Buscar lead por ID (garante que pertence ao usuário)
     async findById(id, userId) {
         const result = await client_1.db
@@ -57,6 +62,14 @@ exports.leadRepository = {
             .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(lead_db_schema_1.leads.id, id), (0, drizzle_orm_1.eq)(lead_db_schema_1.leads.user_id, userId)))
             .returning();
         return lead ?? null;
+    },
+    // Leads filtrados por etapa do kanban (status) — usado pelos disparos de campanha
+    async findByKanbanEtapa(userId, etapa) {
+        return client_1.db
+            .select()
+            .from(lead_db_schema_1.leads)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(lead_db_schema_1.leads.user_id, userId), (0, drizzle_orm_1.eq)(lead_db_schema_1.leads.status, etapa)))
+            .orderBy(lead_db_schema_1.leads.created_at);
     },
     // Pipeline: leads agrupados por status
     async getPipeline(userId) {

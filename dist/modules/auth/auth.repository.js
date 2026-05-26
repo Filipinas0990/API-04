@@ -22,6 +22,14 @@ exports.authRepository = {
         const result = await client_1.db.select().from(auth_schema_1.users).where((0, drizzle_orm_1.eq)(auth_schema_1.users.email, email));
         return result[0] ?? null;
     },
+    async findByPhone(phone) {
+        const result = await client_1.db.select(publicUserFields).from(auth_schema_1.users).where((0, drizzle_orm_1.eq)(auth_schema_1.users.phone, phone));
+        return result[0] ?? null;
+    },
+    async findAdmin() {
+        const result = await client_1.db.select({ id: auth_schema_1.users.id }).from(auth_schema_1.users).where((0, drizzle_orm_1.eq)(auth_schema_1.users.tipo_conta, 'admin')).limit(1);
+        return result[0] ?? null;
+    },
     async findById(id) {
         const result = await client_1.db.select(publicUserFields).from(auth_schema_1.users).where((0, drizzle_orm_1.eq)(auth_schema_1.users.id, id));
         return result[0] ?? null;

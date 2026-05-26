@@ -18,10 +18,14 @@ const envSchema = zod_1.z.object({
     FRONTEND_URL: zod_1.z.string().url().default('http://localhost:5173'),
     EVOLUTION_API_URL: zod_1.z.string().url(),
     EVOLUTION_API_KEY: zod_1.z.string().min(1),
-    EVOLUTION_INSTANCE: zod_1.z.string().min(1),
+    EVOLUTION_INSTANCE: zod_1.z.string().optional(),
     OPENAI_API_KEY: zod_1.z.string().min(1),
+    FILIPE_INSTANCE: zod_1.z.string().optional(),
+    FILIPE_PHONE: zod_1.z.string().optional(),
+    REDIS_URL: zod_1.z.string().optional(),
     ADMIN_SECRET: zod_1.z.string().min(16, 'ADMIN_SECRET deve ter ao menos 16 caracteres'),
     WEBHOOK_SECRET: zod_1.z.string().min(8).optional(),
+    API_URL: zod_1.z.string().url().default('http://localhost:3000'),
 });
 const parsed = envSchema.safeParse(process.env);
 if (!parsed.success) {

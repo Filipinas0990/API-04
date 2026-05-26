@@ -8,6 +8,10 @@ exports.organizations = (0, pg_core_1.pgTable)('organizations', {
     email: (0, pg_core_1.varchar)('email', { length: 200 }),
     phone: (0, pg_core_1.varchar)('phone', { length: 20 }),
     logo_url: (0, pg_core_1.text)('logo_url'),
+    // ── Assinatura ────────────────────────────────────────────────────────────
+    plano: (0, pg_core_1.text)('plano').default('basic'), // 'basic' | 'premium' | 'gold'
+    plano_status: (0, pg_core_1.text)('plano_status').default('active'), // 'active' | 'inactive'
+    plano_expira_em: (0, pg_core_1.timestamp)('plano_expira_em'), // null = sem expiração
     created_at: (0, pg_core_1.timestamp)('created_at').defaultNow(),
     updated_at: (0, pg_core_1.timestamp)('updated_at').defaultNow(),
 });

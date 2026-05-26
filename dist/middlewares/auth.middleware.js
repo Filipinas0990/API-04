@@ -34,9 +34,41 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.authMiddleware = authMiddleware;
+exports.requireAdmin = requireAdmin;
 exports.requireImobiliaria = requireImobiliaria;
 exports.adminMiddleware = adminMiddleware;
 const jwt_1 = require("../config/jwt");
+const client_1 = require("../database/client");
+const shema_1 = require("../database/shema");
+const drizzle_orm_1 = require("drizzle-orm");
+async function resolveEfectivePlan(userId, organizationId) {
+    // Corretor dentro de uma imobiliaria herda o plano da organização
+    if (organizationId) {
+        const [org] = await client_1.db
+            .select({ plano: shema_1.organizations.plano, plano_status: shema_1.organizations.plano_status, plano_expira_em: shema_1.organizations.plano_expira_em })
+            .from(shema_1.organizations)
+            .where((0, drizzle_orm_1.eq)(shema_1.organizations.id, organizationId))
+            .limit(1);
+        if (org && org.plano_status === 'active') {
+            if (!org.plano_expira_em || org.plano_expira_em > new Date()) {
+                return (org.plano ?? 'basic');
+            }
+        }
+        return 'basic';
+    }
+    // Corretor autônomo: usa o próprio plano
+    const [user] = await client_1.db
+        .select({ plano: shema_1.users.plano, plano_status: shema_1.users.plano_status, plano_expira_em: shema_1.users.plano_expira_em })
+        .from(shema_1.users)
+        .where((0, drizzle_orm_1.eq)(shema_1.users.id, userId))
+        .limit(1);
+    if (user && user.plano_status === 'active') {
+        if (!user.plano_expira_em || user.plano_expira_em > new Date()) {
+            return (user.plano ?? 'basic');
+        }
+    }
+    return 'basic';
+}
 async function authMiddleware(req, reply) {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -46,11 +78,38 @@ async function authMiddleware(req, reply) {
     if (!payload) {
         return reply.status(401).send({ statusCode: 401, error: 'Unauthorized', message: 'Token inválido ou expirado' });
     }
+    const tipo_conta = payload.tipo_conta ?? 'corretor';
+    const organization_id = payload.organization_id ?? null;
+    const plano = tipo_conta === 'admin'
+        ? 'gold'
+        : await resolveEfectivePlan(payload.sub, organization_id);
     req.user = {
         id: payload.sub,
         role: payload.role ?? 'owner',
-        tipo_conta: payload.tipo_conta ?? 'corretor',
-        organization_id: payload.organization_id ?? null,
+        tipo_conta,
+        organization_id,
+        plano,
+    };
+}
+// Garante que apenas admins (tipo_conta === 'admin') acessem o endpoint via JWT
+async function requireAdmin(req, reply) {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return reply.status(401).send({ statusCode: 401, error: 'Unauthorized', message: 'Token não fornecido' });
+    }
+    const payload = (0, jwt_1.verifyAccessToken)(authHeader.split(' ')[1]);
+    if (!payload) {
+        return reply.status(401).send({ statusCode: 401, error: 'Unauthorized', message: 'Token inválido ou expirado' });
+    }
+    if (payload.tipo_conta !== 'admin') {
+        return reply.status(403).send({ statusCode: 403, error: 'Forbidden', message: 'Acesso exclusivo para administradores' });
+    }
+    req.user = {
+        id: payload.sub,
+        role: payload.role ?? 'owner',
+        tipo_conta: 'admin',
+        organization_id: null,
+        plano: 'gold',
     };
 }
 // Garante que apenas imobiliárias (owner) acessem o endpoint

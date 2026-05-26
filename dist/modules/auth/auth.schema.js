@@ -15,6 +15,10 @@ exports.users = (0, pg_core_1.pgTable)('users', {
     tipo_conta: (0, pg_core_1.text)('tipo_conta').default('corretor'), // 'corretor' | 'imobiliaria'
     role: (0, pg_core_1.text)('role').default('owner'), // 'owner' | 'agent'
     organization_id: (0, pg_core_1.uuid)('organization_id').references(() => org_db_schema_1.organizations.id, { onDelete: 'set null' }),
+    // ── Assinatura ────────────────────────────────────────────────────────────
+    plano: (0, pg_core_1.text)('plano').default('basic'), // 'basic' | 'premium' | 'gold'
+    plano_status: (0, pg_core_1.text)('plano_status').default('active'), // 'active' | 'inactive'
+    plano_expira_em: (0, pg_core_1.timestamp)('plano_expira_em'), // null = sem expiração
     created_at: (0, pg_core_1.timestamp)('created_at').defaultNow(),
     updated_at: (0, pg_core_1.timestamp)('updated_at').defaultNow(),
 });
