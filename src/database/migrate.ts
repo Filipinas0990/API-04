@@ -37,6 +37,23 @@ export async function runMigrations() {
     console.log('[migrate] Banco de dados atualizado.');
 
     await ensureEtiquetasTables(client);
+    await ensureMetasTable(client);
 
     await client.end();
+}
+
+async function ensureMetasTable(client: postgres.Sql) {
+    await client.unsafe(`
+        CREATE TABLE IF NOT EXISTS "metas" (
+            "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+            "user_id" uuid NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
+            "tipo" text NOT NULL,
+            "valor_alvo" integer NOT NULL,
+            "data_inicio" date NOT NULL,
+            "data_fim" date NOT NULL,
+            "created_at" timestamp DEFAULT now(),
+            "updated_at" timestamp DEFAULT now()
+        )
+    `);
+    console.log('[migrate] Tabela metas garantida.');
 }

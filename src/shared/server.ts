@@ -17,6 +17,7 @@ import { orgRoutes } from '../modules/org/org.routes';
 import { adminRoutes } from '../modules/admin/admin.routes';
 import { subscriptionRoutes } from '../modules/subscription/subscription.routes';
 import { etiquetasRoutes } from '../modules/etiquetas/etiqueta.routes';
+import { metasRoutes } from '../modules/metas/meta.routes';
 
 
 
@@ -48,6 +49,7 @@ export function buildApp() {
     app.register(adminRoutes, { prefix: '/api/v1/admin' });
     app.register(subscriptionRoutes, { prefix: '/api/v1' });
     app.register(etiquetasRoutes, { prefix: '/api/v1/etiquetas' });
+    app.register(metasRoutes, { prefix: '/api/v1/metas' });
 
 
 
