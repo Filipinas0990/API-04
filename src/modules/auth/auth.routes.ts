@@ -9,7 +9,22 @@ export async function authRoutes(app: FastifyInstance) {
     app.post('/register-imobiliaria', { preHandler: adminMiddleware }, authController.registerImobiliaria);
     app.post('/register-admin', { preHandler: adminMiddleware }, authController.registerAdmin);
     app.post('/reset-password', { preHandler: adminMiddleware }, authController.resetPassword);
-    app.post('/login', authController.login);
+    app.post('/login', {
+        config: {
+            rateLimit: {
+                max: 10,
+                timeWindow: '15 minutes',
+                ban: 1,
+                errorResponseBuilder: (_request: unknown, context: { ttl: number; ban: boolean }) => ({
+                    statusCode: context.ban ? 403 : 429,
+                    error: context.ban ? 'Forbidden' : 'Too Many Requests',
+                    message: context.ban
+                        ? 'IP bloqueado por excesso de tentativas de login. Contacte o suporte.'
+                        : `Muitas tentativas de login. Aguarde ${Math.ceil(context.ttl / 1000 / 60)} minuto(s) para tentar novamente.`,
+                }),
+            },
+        },
+    }, authController.login);
     app.post('/refresh', authController.refresh);
     app.delete('/logout', authController.logout);
 

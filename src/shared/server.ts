@@ -3,7 +3,9 @@ import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import cookie from '@fastify/cookie';
 import multipart from '@fastify/multipart';
+import rateLimit from '@fastify/rate-limit';
 import { env } from '../config/env';
+import { getRedisClient } from '../config/redis';
 import { errorHandler } from '../middlewares/error.middleware';
 import { authRoutes } from '../modules/auth/auth.routes';
 import { leadRoutes } from '../modules/leads/lead.routes';
@@ -36,6 +38,20 @@ export function buildApp() {
 
     app.register(helmet);
     app.register(multipart, { limits: { fileSize: 25 * 1024 * 1024 } }); // 25MB
+
+    const redis = getRedisClient();
+    app.register(rateLimit, {
+        global: true,
+        max: 200,
+        timeWindow: '1 minute',
+        ...(redis ? { redis } : {}),
+        keyGenerator: (request) => request.ip,
+        errorResponseBuilder: (_request, context) => ({
+            statusCode: 429,
+            error: 'Too Many Requests',
+            message: `Limite de requisições atingido. Aguarde ${Math.ceil(context.ttl / 1000)} segundo(s).`,
+        }),
+    });
 
     app.register(cookie, { secret: env.REFRESH_SECRET });
     app.register(leadRoutes, { prefix: '/api/v1/leads' });
