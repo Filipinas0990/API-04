@@ -273,13 +273,10 @@ export const whatsappController = {
 
     // ── WEBHOOK ──────────────────────────────────
     async webhook(req: FastifyRequest, reply: FastifyReply) {
-        // Valida token secreto se configurado
-        if (env.WEBHOOK_SECRET) {
-            const token = (req.query as Record<string, string>).token
-                ?? req.headers['x-webhook-token'];
-            if (token !== env.WEBHOOK_SECRET) {
-                return reply.status(401).send({ message: 'Não autorizado' });
-            }
+        const token = (req.query as Record<string, string>).token
+            ?? req.headers['x-webhook-token'];
+        if (token !== env.WEBHOOK_SECRET) {
+            return reply.status(401).send({ message: 'Não autorizado' });
         }
 
         const body = req.body as Record<string, unknown>;

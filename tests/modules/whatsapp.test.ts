@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import supertest from 'supertest';
+import { env } from '../../src/config/env';
 import { buildApp } from '../../src/shared/server';
 import { db } from '../../src/database/client';
 import { users, refreshTokens } from '../../src/modules/auth/auth.schema';
@@ -156,9 +157,17 @@ describe('DELETE /api/v1/whatsapp/automacoes/:id', () => {
 });
 
 describe('POST /api/v1/whatsapp/webhook', () => {
-    it('deve aceitar webhook público sem token', async () => {
+    it('deve rejeitar webhook sem token', async () => {
         const res = await supertest(app.server)
             .post('/api/v1/whatsapp/webhook')
+            .send({ event: 'connection.update', instance: 'teste' });
+        expect(res.status).toBe(401);
+    });
+
+    it('deve aceitar webhook com token correto', async () => {
+        const res = await supertest(app.server)
+            .post('/api/v1/whatsapp/webhook')
+            .set('x-webhook-token', env.WEBHOOK_SECRET)
             .send({ event: 'connection.update', instance: 'teste' });
         expect(res.status).toBe(200);
     });
