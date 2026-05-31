@@ -1,0 +1,11 @@
+3### - DEFAULTS SEGUROS 
+
+
+4## - CRIPTOGRAFAR DADOS SENSIVEIS
+
+
+5## - UPDATES DE SEGURANÇA
+
+- Depandabot
+- SAST - SonarQube
+

@@ -7,6 +7,7 @@ import rateLimit from '@fastify/rate-limit';
 import { env } from '../config/env';
 import { getRedisClient } from '../config/redis';
 import { errorHandler } from '../middlewares/error.middleware';
+import { registerRequestLogger } from '../middlewares/logger.middleware';
 import { authRoutes } from '../modules/auth/auth.routes';
 import { leadRoutes } from '../modules/leads/lead.routes';
 import { imovelRoutes } from '../modules/imoveis/imovel.routes';
@@ -26,11 +27,17 @@ import { metasRoutes } from '../modules/metas/meta.routes';
 
 export function buildApp() {
     const app = Fastify({
+        disableRequestLogging: true,
         logger: env.NODE_ENV !== 'test'
             ? {
+                level: 'info',
                 transport: {
                     target: 'pino-pretty',
-                    options: { translateTime: 'HH:MM:ss Z', ignore: 'pid,hostname' },
+                    options: {
+                        translateTime: 'HH:MM:ss Z',
+                        ignore: 'pid,hostname',
+                        colorize: true,
+                    },
                 },
             }
             : false,
@@ -84,6 +91,7 @@ export function buildApp() {
 
     app.register(authRoutes, { prefix: '/api/v1/auth' });
 
+    registerRequestLogger(app);
     app.setErrorHandler(errorHandler);
 
     return app;
