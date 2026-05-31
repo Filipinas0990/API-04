@@ -31,6 +31,7 @@
     "cookie": "^1.1.1",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
+    "drizzle-kit": "^0.31.10",
     "drizzle-orm": "^0.45.2",
     "fastify": "^5.8.4",
     "helmet": "^8.1.0",
@@ -52,7 +53,6 @@
     "@vitest/coverage-v8": "^4.1.5",
     "cross-env": "^10.1.0",
     "dotenv-cli": "^11.0.0",
-    "drizzle-kit": "^0.31.10",
     "supertest": "^7.2.2",
     "vitest": "^4.1.5"
   }
