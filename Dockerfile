@@ -21,6 +21,7 @@ RUN npm install --omit=dev
 
 COPY --from=builder /app/dist ./dist
 COPY drizzle ./drizzle
+COPY drizzle.config.ts ./
 
 EXPOSE 3000
 
